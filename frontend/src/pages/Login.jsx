@@ -10,9 +10,34 @@ export default function Login() {
   const [employees, setEmployees]     = useState([])
   const [msg, setMsg]           = useState({ text: '', type: '' })
   const [loading, setLoading]   = useState(false)
+  const [deferredPrompt, setDeferredPrompt] = useState(null)
   const navigate = useNavigate()
 
-  useEffect(() => { socket.disconnect(); sessionStorage.clear() }, [])
+  useEffect(() => {
+    socket.disconnect()
+    sessionStorage.clear()
+
+    const handleBeforeInstall = (e) => {
+      e.preventDefault()
+      setDeferredPrompt(e)
+    }
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall)
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall)
+  }, [])
+
+  const installApp = () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt()
+      deferredPrompt.userChoice.then((choiceResult) => {
+        if (choiceResult.outcome === 'accepted') {
+          setDeferredPrompt(null)
+        }
+      })
+    } else {
+      alert('To install: Click the 3 dots in top-right of your browser → Save and share → Install Whiteng Calling (or click the computer/download icon in your URL bar).')
+    }
+  }
 
   function selectRole(r) {
     setStep(r); setMsg({ text: '', type: '' })
@@ -40,7 +65,6 @@ export default function Login() {
     })
   }
 
-  // ── Sir Login ──────────────────────────────────
   function sirLogin() {
     if (!password.trim()) { setMsg({ text: 'Enter your password.', type: 'error' }); return }
     setLoading(true); setMsg({ text: 'Authenticating...', type: 'info' })
@@ -58,7 +82,6 @@ export default function Login() {
     })
   }
 
-  // ── Employee Login ─────────────────────────────
   function empLogin() {
     if (!selectedEmp) { setMsg({ text: 'Select your name first.', type: 'error' }); return }
     if (!empPassword.trim()) { setMsg({ text: 'Enter your password.', type: 'error' }); return }
@@ -111,6 +134,31 @@ export default function Login() {
                 <div className="role-title">Employee</div>
                 <div className="role-desc">Staff Member</div>
               </div>
+            </div>
+
+            {/* Direct Install App Button inside Login Card */}
+            <div style={{ marginTop: '24px', textAlign: 'center' }}>
+              <button
+                onClick={installApp}
+                style={{
+                  width: '100%',
+                  padding: '11px',
+                  background: 'var(--bg2)',
+                  color: 'var(--primary)',
+                  border: '1.5px solid var(--border)',
+                  borderRadius: '12px',
+                  fontSize: '.88rem',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  transition: 'all .2s'
+                }}
+              >
+                💻 <span>Install App on Desktop</span>
+              </button>
             </div>
           </>
         )}
