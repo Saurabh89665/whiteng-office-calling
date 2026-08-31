@@ -1,5 +1,5 @@
 {
-  "serverUrl": "http://localhost:8000",
+  "serverUrl": "https://whiteng-office-calling.onrender.com",
   "appName": "Whiteng Software — Office Calling System",
   "version": "1.0.0"
 }
