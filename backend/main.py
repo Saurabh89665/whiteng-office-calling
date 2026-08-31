@@ -329,7 +329,14 @@ async def acknowledge_call(sid, data):
     })
 
 # ── Serve React build ────────────────────────────────
-frontend_dist = BASE_DIR.parent / "frontend" / "dist"
+frontend_dist = BASE_DIR / "frontend_dist"
+if not frontend_dist.exists():
+    frontend_dist = BASE_DIR / "dist"
+if not frontend_dist.exists():
+    frontend_dist = BASE_DIR.parent / "frontend" / "dist"
+
+log(f"[Server] Looking for frontend build in: {frontend_dist} (exists: {frontend_dist.exists()})")
+
 if frontend_dist.exists():
     if (frontend_dist / "assets").exists():
         app.mount("/assets", StaticFiles(directory=str(frontend_dist / "assets")), name="assets")
