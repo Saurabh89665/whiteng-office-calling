@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';" />
+  <title>Employee Dashboard — Office Sir Calling System</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+<div class="emp-layout">
+
+  <!-- Top Connection Bar -->
+  <div class="conn-bar" id="connBar">
+    <div class="conn-dot connected" id="connDot"></div>
+    <span id="connText">Connected to server</span>
+    <span style="margin-left:auto;color:var(--text-3);font-size:0.75rem;" id="serverUrlLabel"></span>
+  </div>
+
+  <!-- Header -->
+  <header class="emp-header">
+    <div>
+      <h1 style="font-size:1.2rem;">🏢 Office Sir Calling System</h1>
+      <p style="font-size:0.8rem;color:var(--text-3);margin-top:2px;">
+        Waiting for Sir's call...
+      </p>
+    </div>
+  </header>
+
+  <!-- Body -->
+  <div class="emp-body">
+    <div class="emp-status-card anim-slide-up">
+      <div class="emp-welcome-icon">👤</div>
+      <div class="emp-welcome-name" id="empWelcomeName">Welcome!</div>
+      <div class="emp-welcome-sub">You are logged in and ready to receive calls</div>
+
+      <div class="emp-status-display">
+        <div class="big-dot" id="statusDot"></div>
+        <div class="status-text" id="statusText">🟢 Online</div>
+        <div class="status-sub" id="statusSub">Listening for Sir's call...</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Incoming Call Modal -->
+<div class="modal-overlay hidden" id="callModal">
+  <div class="call-modal">
+    <span class="call-modal-ring" id="callRingEmoji">🔔</span>
+    <div class="call-modal-title">Sir is calling you!</div>
+    <div class="call-modal-body">
+      <span class="call-modal-name" id="callModalName">You</span>,
+      Sir is calling you.<br/>
+      <span style="font-size:0.85rem;color:var(--text-3);">Please report to Sir's cabin.</span>
+    </div>
+    <button class="call-modal-ok" id="callOkBtn" onclick="acknowledgeCall()">
+      ✅ OK — I'm Coming!
+    </button>
+  </div>
+</div>
+
+<script src="js/employee-dashboard.js"></script>
+</body>
+</html>

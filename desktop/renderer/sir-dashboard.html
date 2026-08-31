@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';" />
+  <title>Sir Dashboard — Office Sir Calling System</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+<div class="sir-layout">
+
+  <!-- Top Connection Bar -->
+  <div class="conn-bar" id="connBar">
+    <div class="conn-dot connected" id="connDot"></div>
+    <span id="connText">Connected to server</span>
+    <span style="margin-left:auto;color:var(--text-3);font-size:0.75rem;" id="serverUrlLabel"></span>
+  </div>
+
+  <!-- Header -->
+  <header class="sir-header">
+    <div class="sir-header-left">
+      <h1>🏢 Office Employee Calling</h1>
+      <p>Click an online employee to call them</p>
+    </div>
+    <div class="flex gap-12" style="align-items:center;">
+      <div class="status-badge online">
+        <div class="dot green"></div>
+        Sir — Online
+      </div>
+    </div>
+  </header>
+
+  <!-- Body -->
+  <div class="sir-body">
+
+    <!-- Main: Employee Cards -->
+    <main class="sir-main">
+      <div class="section-title">
+        Employees
+        <span id="onlineCount" style="color:var(--green);margin-left:8px;">● 0 online</span>
+      </div>
+
+      <div class="emp-cards-grid" id="empCardsGrid">
+        <!-- Populated by JS -->
+        <div style="color:var(--text-3);font-size:0.9rem;grid-column:1/-1;padding:20px 0;">
+          Loading employee list...
+        </div>
+      </div>
+    </main>
+
+    <!-- Sidebar: Call Log -->
+    <aside class="sir-sidebar">
+      <div class="sidebar-header">
+        <h3>📋 Call History</h3>
+      </div>
+      <div class="call-log" id="callLog">
+        <div class="call-log-empty" id="callLogEmpty">
+          <span>📭</span>
+          <span>No calls yet</span>
+        </div>
+      </div>
+    </aside>
+
+  </div>
+
+</div>
+
+<!-- Toast (transient notifications) -->
+<div id="toast" class="toast hidden"></div>
+
+<script src="js/sir-dashboard.js"></script>
+</body>
+</html>

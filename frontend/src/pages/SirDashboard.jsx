@@ -1,0 +1,361 @@
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
+import socket from '../socket'
+
+const TIME = () => new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+
+export default function SirDashboard() {
+  const [tab, setTab]           = useState('call')     // 'call' | 'manage'
+  const [connected, setConnected] = useState(true)
+  const [employees, setEmployees] = useState([])       // {id, name, online}
+  const [empList, setEmpList]   = useState([])         // {id, name} — for manage tab
+  const [callLog, setCallLog]   = useState([])
+  const [calling, setCalling]   = useState({})
+  const [callingAll, setCallingAll] = useState(false)
+  const [toast, setToast]       = useState(null)
+
+  // Add employee form
+  const [newName, setNewName]   = useState('')
+  const [newPass, setNewPass]   = useState('')
+  const [addLoading, setAddLoading] = useState(false)
+
+  // Change password modal
+  const [pwModal, setPwModal]   = useState(null)       // {id, name} or null
+  const [newPw, setNewPw]       = useState('')
+
+  const token    = sessionStorage.getItem('token')
+  const toastRef = useRef(null)
+  const navigate = useNavigate()
+
+  const appUrl = window.location.origin
+
+  // ── Connect ────────────────────────────────────
+  useEffect(() => {
+    document.title = 'Sir Admin — Whiteng Software'
+    const doAuth = () => {
+      socket.emit('sir_reconnect', { token }, (res) => {
+        if (!res?.success) navigate('/')
+      })
+    }
+    if (!socket.connected) { socket.connect(); socket.once('connect', doAuth) }
+    else doAuth()
+
+    socket.on('employees_status', setEmployees)
+    socket.on('employees_list',   setEmpList)
+    socket.on('call_acknowledged', handleAck)
+    socket.on('connect',    () => setConnected(true))
+    socket.on('disconnect', () => setConnected(false))
+
+    return () => {
+      socket.off('employees_status', setEmployees)
+      socket.off('employees_list',   setEmpList)
+      socket.off('call_acknowledged', handleAck)
+      socket.off('connect')
+      socket.off('disconnect')
+    }
+  }, [])
+
+  // ── Toast ──────────────────────────────────────
+  const showToast = useCallback((msg, type = 'info', ms = 4000) => {
+    setToast({ msg, type })
+    clearTimeout(toastRef.current)
+    toastRef.current = setTimeout(() => setToast(null), ms)
+  }, [])
+
+  // ── Ack ────────────────────────────────────────
+  const handleAck = useCallback((data) => {
+    showToast(`✅ ${data.employeeName} is on the way!`, 'success', 5000)
+    setCallLog(prev => prev.map(i =>
+      i.callId === data.callId ? { ...i, acked: true, ackTime: TIME() } : i
+    ))
+  }, [showToast])
+
+  // ── Call single employee ──────────────────────
+  const callEmployee = useCallback((emp) => {
+    if (calling[emp.id]) return
+    setCalling(p => ({ ...p, [emp.id]: true }))
+    showToast(`📞 Calling ${emp.name}…`, 'info', 3000)
+    socket.emit('call_employee', { token, employeeId: emp.id, employeeName: emp.name }, (res) => {
+      setTimeout(() => setCalling(p => ({ ...p, [emp.id]: false })), 3000)
+      if (res.success) {
+        setCallLog(p => [{ callId: res.callId, name: emp.name, time: TIME(), acked: false }, ...p.slice(0, 29)])
+      } else {
+        showToast(`❌ ${res.error}`, 'error', 5000)
+      }
+    })
+  }, [calling, token, showToast])
+
+  // ── Call ALL employees (Broadcast Call) ───────
+  const callAllEmployees = useCallback(() => {
+    const onlineCount = employees.filter(e => e.online).length
+    if (onlineCount === 0) {
+      showToast('❌ No employees are currently online to call.', 'error')
+      return
+    }
+    setCallingAll(true)
+    showToast(`📢 Calling ALL (${onlineCount}) online employees to the cabin…`, 'info', 4000)
+
+    socket.emit('call_all_employees', { token }, (res) => {
+      setTimeout(() => setCallingAll(false), 3000)
+      if (res.success) {
+        setCallLog(p => [{
+          callId: res.callId,
+          name: `📢 EVERYONE (${res.count} employees)`,
+          time: TIME(),
+          acked: false
+        }, ...p.slice(0, 29)])
+        showToast(`✅ Notification sent to all ${res.count} online employees!`, 'success', 4000)
+      } else {
+        showToast(`❌ ${res.error}`, 'error')
+      }
+    })
+  }, [employees, token, showToast])
+
+  // ── Add employee ───────────────────────────────
+  function addEmployee() {
+    if (!newName.trim()) { showToast('Enter employee name.', 'error'); return }
+    if (newPass.length < 4) { showToast('Password must be at least 4 characters.', 'error'); return }
+    setAddLoading(true)
+    socket.emit('add_employee', { token, name: newName.trim(), password: newPass }, (res) => {
+      setAddLoading(false)
+      if (res.success) {
+        showToast(`✅ ${res.employee.name} added successfully!`, 'success')
+        setNewName(''); setNewPass('')
+      } else {
+        showToast(`❌ ${res.error}`, 'error')
+      }
+    })
+  }
+
+  // ── Remove employee ────────────────────────────
+  function removeEmployee(emp) {
+    if (!confirm(`Remove ${emp.name} from the system?`)) return
+    socket.emit('remove_employee', { token, employeeId: emp.id }, (res) => {
+      if (res.success) showToast(`🗑️ ${emp.name} removed.`, 'info')
+      else showToast(`❌ ${res.error}`, 'error')
+    })
+  }
+
+  // ── Update password ────────────────────────────
+  function updatePassword() {
+    if (!pwModal || newPw.length < 4) { showToast('Password must be ≥4 chars.', 'error'); return }
+    socket.emit('update_employee_password', { token, employeeId: pwModal.id, password: newPw }, (res) => {
+      if (res.success) { showToast(`🔑 Password updated for ${pwModal.name}.`, 'success'); setPwModal(null); setNewPw('') }
+      else showToast(`❌ ${res.error}`, 'error')
+    })
+  }
+
+  // ── Copy Share Link ────────────────────────────
+  function copyLink() {
+    navigator.clipboard.writeText(appUrl)
+    showToast('🔗 Employee Link Copied!', 'success')
+  }
+
+  const onlineCount = employees.filter(e => e.online).length
+
+  return (
+    <div className="page">
+      {/* Connection bar */}
+      <div className="conn-bar">
+        <div className={`dot ${connected ? 'dot-green' : 'dot-red'}`} />
+        <span>{connected ? 'Connected' : 'Disconnected — reconnecting…'}</span>
+        <span className="conn-right">Whiteng Software</span>
+      </div>
+
+      {/* Header */}
+      <header className="sir-header">
+        <div className="header-brand">
+          <div className="company">🏢 Whiteng Software</div>
+          <div className="role">Admin / Super Admin Dashboard</div>
+        </div>
+        <div className="admin-badge-header">👔 Sir — Admin</div>
+      </header>
+
+      {/* Tabs */}
+      <div className="sir-tabs">
+        <button className={`tab-btn ${tab === 'call' ? 'active' : ''}`} onClick={() => setTab('call')}>
+          📞 Call Employees
+          {onlineCount > 0 && <span style={{marginLeft:'6px',background:'var(--green)',color:'#fff',borderRadius:'99px',padding:'1px 7px',fontSize:'.7rem'}}>{onlineCount}</span>}
+        </button>
+        <button className={`tab-btn ${tab === 'manage' ? 'active' : ''}`} onClick={() => setTab('manage')}>
+          👥 Manage & Share
+          <span style={{marginLeft:'6px',color:'var(--text3)',fontSize:'.78rem'}}>({empList.length})</span>
+        </button>
+      </div>
+
+      {/* ─ Tab: Call Employees ─ */}
+      {tab === 'call' && (
+        <div className="sir-body">
+          <main className="sir-main">
+            {/* Top Broadcast Bar: Everyone Come To Cabin */}
+            <div className="broadcast-card">
+              <div className="broadcast-info">
+                <div className="broadcast-title">📢 Call Everyone to Cabin</div>
+                <div className="broadcast-sub">Send an immediate high-priority alert to all online employees simultaneously</div>
+              </div>
+              <button
+                className={`btn-broadcast ${callingAll ? 'calling' : ''}`}
+                onClick={callAllEmployees}
+                disabled={callingAll || onlineCount === 0}
+              >
+                {callingAll ? '🔔 CALLING ALL…' : '🚨 CALL EVERYONE NOW'}
+              </button>
+            </div>
+
+            <div className="section-label">
+              Individual Employees <span className="online-count">● {onlineCount} online</span>
+            </div>
+            {employees.length === 0 ? (
+              <p style={{ color: 'var(--text3)', fontSize: '.9rem' }}>
+                No employees yet. Go to <b>Manage & Share</b> to add staff.
+              </p>
+            ) : (
+              <div className="emp-cards">
+                {employees.map(emp => (
+                  <div key={emp.id} className={`emp-card ${emp.online ? 'online' : 'offline'}`}
+                    onClick={() => emp.online && callEmployee(emp)}>
+                    {calling[emp.id] && <div className="calling-overlay">📞 Calling…</div>}
+                    <div className="emp-avatar">{emp.name.charAt(0)}</div>
+                    <div className="emp-card-name">{emp.name}</div>
+                    <div className="emp-card-status">{emp.online ? '🟢 Online' : '🔴 Offline'}</div>
+                    {emp.online && (
+                      <button className="call-btn" onClick={e => { e.stopPropagation(); callEmployee(emp) }}>
+                        📞 Call
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </main>
+
+          <aside className="sir-sidebar">
+            <div className="sidebar-hdr">📋 Call History</div>
+            <div className="call-log">
+              {callLog.length === 0 ? (
+                <div className="log-empty"><span>📭</span><span>No calls yet</span></div>
+              ) : callLog.map((item, i) => (
+                <div key={i} className={`log-item ${item.acked ? 'acked' : ''}`}>
+                  <div className="log-time">{item.time}</div>
+                  <div className="log-text">📞 Called <b>{item.name}</b></div>
+                  <div className={`log-ack ${item.acked ? 'done' : ''}`}>
+                    {item.acked ? `✅ Received · ${item.ackTime}` : '⏳ Waiting…'}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </aside>
+        </div>
+      )}
+
+      {/* ─ Tab: Manage Employees & Share Link ─ */}
+      {tab === 'manage' && (
+        <div className="manage-body">
+          {/* Employee list */}
+          <div className="manage-list">
+            <h3>Current Employees ({empList.length})</h3>
+            {empList.length === 0 ? (
+              <div className="empty-state">
+                <span className="empty-icon">👥</span>
+                <p>No employees added yet.</p>
+                <p style={{fontSize:'.82rem',marginTop:'6px',color:'var(--text3)'}}>Use the form on the right to add employees.</p>
+              </div>
+            ) : (
+              <table className="emp-list-table">
+                <thead>
+                  <tr>
+                    <th>Employee</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {empList.map(emp => {
+                    const online = employees.find(e => e.id === emp.id)?.online ?? false
+                    return (
+                      <tr key={emp.id}>
+                        <td>
+                          <span className="emp-row-avatar">{emp.name.charAt(0)}</span>
+                          {emp.name}
+                        </td>
+                        <td>
+                          <span className={`emp-status-dot ${online ? 'on' : 'off'}`} />
+                          {online ? 'Online' : 'Offline'}
+                        </td>
+                        <td>
+                          <button className="btn-pw" onClick={() => { setPwModal(emp); setNewPw('') }}>🔑 Password</button>
+                          <button className="btn-remove" onClick={() => removeEmployee(emp)}>🗑️ Remove</button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          {/* Add employee form & Share section */}
+          <div className="manage-form-panel">
+            <h3>➕ Add New Employee</h3>
+            <div className="form-group">
+              <label>Full Name</label>
+              <input type="text" placeholder="e.g. Saurabh" value={newName}
+                onChange={e => setNewName(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && !addLoading && addEmployee()} />
+            </div>
+            <div className="form-group">
+              <label>Set Password</label>
+              <input type="password" placeholder="Min 4 characters" value={newPass}
+                onChange={e => setNewPass(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && !addLoading && addEmployee()} />
+            </div>
+            <button className="add-emp-btn" onClick={addEmployee} disabled={addLoading || !newName.trim() || newPass.length < 4}>
+              {addLoading ? 'Adding…' : '✅ Add Employee'}
+            </button>
+
+            <div className="form-divider" />
+
+            {/* Shareable Link Box */}
+            <div className="share-box">
+              <div className="share-title">🔗 Employee Access Link</div>
+              <div className="share-desc">Send this link to your employees so they can login or download the desktop app:</div>
+              <div className="share-input-wrap">
+                <input className="share-input" readOnly value={appUrl} />
+                <button className="share-copy-btn" onClick={copyLink}>Copy</button>
+              </div>
+            </div>
+
+            <p className="form-note">
+              🔒 Employees use their name + the password you set to log in.<br/><br/>
+              🗑️ Removing an employee automatically disconnects them.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Password update modal */}
+      {pwModal && (
+        <div className="modal-overlay" onClick={() => setPwModal(null)}>
+          <div className="call-modal" onClick={e => e.stopPropagation()}
+            style={{ borderColor: 'var(--primary)' }}>
+            <span style={{ fontSize: '2.5rem', display: 'block', marginBottom: '16px' }}>🔑</span>
+            <div className="call-title" style={{ color: 'var(--primary)', fontSize: '1.2rem' }}>
+              Update Password
+            </div>
+            <div className="call-body">Set new password for <span className="call-name">{pwModal.name}</span></div>
+            <input type="password" placeholder="New password (min 4 chars)" value={newPw}
+              onChange={e => setNewPw(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && updatePassword()}
+              style={{ width:'100%', padding:'11px 14px', background:'var(--bg2)', border:'1.5px solid var(--border)', borderRadius:'8px', color:'var(--text1)', fontSize:'.95rem', fontFamily:'inherit', outline:'none', marginBottom:'16px' }} />
+            <div style={{ display:'flex', gap:'10px' }}>
+              <button className="ok-btn" style={{ background:'var(--primary)' }} onClick={updatePassword}>Update Password</button>
+              <button className="ok-btn" style={{ background:'transparent', border:'1px solid var(--border)', color:'var(--text2)' }} onClick={() => setPwModal(null)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {toast && <div className={`toast toast-${toast.type}`}>{toast.msg}</div>}
+    </div>
+  )
+}

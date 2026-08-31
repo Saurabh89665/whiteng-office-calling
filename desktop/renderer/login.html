@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';" />
+  <title>Login — Office Sir Calling System</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body class="login-body">
+
+  <div class="login-container" id="loginContainer">
+
+    <!-- Logo / Branding -->
+    <div class="login-logo">
+      <span class="logo-emoji">🏢</span>
+      <h1>Office Sir Calling System</h1>
+      <p>Internal Communication System</p>
+    </div>
+
+    <!-- ── Step 1: Role Selection ── -->
+    <div id="roleSection" class="role-section">
+      <h2>Select Your Role to Continue</h2>
+      <div class="role-cards">
+        <div class="role-card" id="sirCard" onclick="selectRole('sir')" tabindex="0">
+          <div class="role-icon">👔</div>
+          <div class="role-title">Sir</div>
+          <div class="role-desc">Office Manager</div>
+        </div>
+        <div class="role-card" id="empCard" onclick="selectRole('employee')" tabindex="0">
+          <div class="role-icon">👤</div>
+          <div class="role-title">Employee</div>
+          <div class="role-desc">Staff Member</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Step 2a: Sir Login ── -->
+    <div id="sirSection" class="login-form hidden">
+      <h2>🔐 Login as Sir</h2>
+      <div class="form-group" style="margin-top:20px;">
+        <label for="sirPassword">Password</label>
+        <input
+          type="password"
+          id="sirPassword"
+          placeholder="Enter your password"
+          autocomplete="current-password"
+        />
+      </div>
+      <button class="btn-primary" id="sirLoginBtn" onclick="loginAsSir()">
+        Login &rarr;
+      </button>
+      <button class="btn-back" onclick="goBack()">← Back</button>
+    </div>
+
+    <!-- ── Step 2b: Employee Selection ── -->
+    <div id="empSection" class="login-form hidden">
+      <h2>👤 Select Your Name</h2>
+      <div id="empGrid" class="emp-grid" style="margin-top:16px;">
+        <!-- Populated dynamically -->
+        <div class="emp-btn" style="grid-column:1/-1;cursor:default;opacity:0.5;">
+          Loading employees...
+        </div>
+      </div>
+      <button class="btn-back" onclick="goBack()">← Back</button>
+    </div>
+
+    <!-- ── Status Message ── -->
+    <div id="statusMsg" class="status-msg hidden"></div>
+
+  </div>
+
+  <script src="js/login.js"></script>
+</body>
+</html>

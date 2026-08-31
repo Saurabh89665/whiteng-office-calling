@@ -1,0 +1,43 @@
+{
+  "name": "whiteng-office-calling",
+  "version": "1.0.0",
+  "description": "Whiteng Software — Office Calling System",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win --x64"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.whitengsoftware.officecalling",
+    "productName": "Whiteng Office Calling",
+    "copyright": "Whiteng Software",
+    "files": [
+      "main.js",
+      "assets/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      { "from": "config.json", "to": "config.json" }
+    ],
+    "asar": true,
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "icon": "assets/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Whiteng Office Calling"
+    }
+  },
+  "author": "Whiteng Software",
+  "license": "MIT"
+}

@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Employee Dashboard — Office Sir Calling System</title>
+<script src="/socket.io/socket.io.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',sans-serif;background:#0f0f1a;color:#f1f5f9;height:100vh;display:flex;flex-direction:column}
+.conn-bar{display:flex;align-items:center;gap:8px;padding:6px 20px;background:#16213e;border-bottom:1px solid #2d3748;font-size:.8rem}
+.dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.dot.green{background:#22c55e;box-shadow:0 0 6px #22c55e;animation:pulse 2s infinite}
+.dot.red{background:#ef4444}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.header{padding:16px 24px;background:#1a1a2e;border-bottom:1px solid #2d3748;display:flex;align-items:center;justify-content:space-between}
+.header h1{font-size:1.2rem}
+.header p{font-size:.78rem;color:#64748b;margin-top:2px}
+.body{flex:1;display:flex;align-items:center;justify-content:center;padding:24px}
+.status-card{background:#1a1a2e;border:1.5px solid #2d3748;border-radius:20px;padding:48px 40px;text-align:center;min-width:340px;box-shadow:0 4px 40px rgba(0,0,0,.4);animation:slideUp .3s ease}
+.welcome-icon{font-size:4rem;margin-bottom:16px}
+.welcome-name{font-size:1.8rem;font-weight:700;margin-bottom:8px}
+.welcome-sub{font-size:.9rem;color:#94a3b8;margin-bottom:28px}
+.status-wrap{display:flex;flex-direction:column;align-items:center;gap:10px}
+.big-dot{width:18px;height:18px;border-radius:50%;background:#22c55e;box-shadow:0 0 12px #22c55e,0 0 24px rgba(34,197,94,.3);animation:pulse 2s infinite}
+.status-txt{font-size:1.1rem;font-weight:700;color:#22c55e}
+.status-sub{font-size:.82rem;color:#64748b}
+/* Modal */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:999;animation:fadeIn .2s ease}
+.overlay.hidden{display:none}
+.modal{background:#1a1a2e;border:2px solid #22c55e;border-radius:20px;padding:40px 36px;text-align:center;width:380px;box-shadow:0 0 60px rgba(34,197,94,.3);animation:slideUp .3s ease}
+.ring{font-size:4rem;animation:shake .6s infinite;display:block;margin-bottom:20px}
+.modal-title{font-size:1.5rem;font-weight:800;margin-bottom:8px;color:#22c55e}
+.modal-body{font-size:1rem;color:#94a3b8;margin-bottom:28px;line-height:1.5}
+.modal-name{color:#f1f5f9;font-weight:700}
+.ok-btn{padding:14px 40px;background:#22c55e;color:#fff;border:none;border-radius:12px;font-size:1.1rem;font-weight:800;cursor:pointer;width:100%;transition:.2s}
+.ok-btn:hover{background:#16a34a;box-shadow:0 0 20px rgba(34,197,94,.4)}
+</style>
+</head>
+<body>
+<div class="conn-bar">
+  <div class="dot green" id="connDot"></div>
+  <span id="connText">Connected</span>
+  <span style="margin-left:auto;color:#475569;font-size:.75rem">localhost:3000</span>
+</div>
+
+<header class="header">
+  <div>
+    <h1>🏢 Office Sir Calling System</h1>
+    <p>Waiting for Sir's call...</p>
+  </div>
+</header>
+
+<div class="body">
+  <div class="status-card">
+    <div class="welcome-icon">👤</div>
+    <div class="welcome-name" id="empName">Welcome!</div>
+    <div class="welcome-sub">You are logged in and ready to receive calls</div>
+    <div class="status-wrap">
+      <div class="big-dot" id="bigDot"></div>
+      <div class="status-txt" id="statusTxt">🟢 Online</div>
+      <div class="status-sub" id="statusSub">Listening for Sir's call...</div>
+    </div>
+  </div>
+</div>
+
+<!-- Call Modal -->
+<div class="overlay hidden" id="callModal">
+  <div class="modal">
+    <span class="ring">🔔</span>
+    <div class="modal-title">Sir is calling you!</div>
+    <div class="modal-body">
+      <span class="modal-name" id="callName"></span>, Sir is calling you.<br/>
+      <span style="font-size:.85rem;color:#64748b">Please report to Sir's cabin.</span>
+    </div>
+    <button class="ok-btn" onclick="ack()">✅ OK — I'm Coming!</button>
+  </div>
+</div>
+
+<script>
+const token   = sessionStorage.getItem('token');
+const empN    = sessionStorage.getItem('empName') || 'Employee';
+const empId   = sessionStorage.getItem('empId');
+const roleS   = sessionStorage.getItem('role');
+if (!token || roleS !== 'employee') { window.location.href = '/'; }
+
+document.getElementById('empName').textContent = 'Welcome, ' + empN + '!';
+document.title = empN + ' — Office Sir Calling System';
+
+const socket = io();
+let currentCall = null;
+let audioCtx = null;
+
+socket.on('connect', () => {
+  socket.emit('employee_reconnect', { token, employeeId: empId, employeeName: empN }, (res) => {
+    if (res && !res.success) { window.location.href = '/'; }
+  });
+  setConn('green', 'Connected');
+  setOnline(true);
+});
+
+socket.on('incoming_call', (data) => {
+  currentCall = data;
+  document.getElementById('callName').textContent = data.employeeName;
+  document.getElementById('callModal').classList.remove('hidden');
+  playSound();
+  speak(`${data.employeeName}, Sir is calling you. Please report to Sir's cabin.`);
+});
+
+socket.on('disconnect', () => { setConn('red', 'Disconnected — reconnecting...'); setOnline(false); });
+socket.on('reconnect',   () => { setConn('green', 'Connected'); setOnline(true); });
+
+function setConn(color, text) {
+  document.getElementById('connDot').className = 'dot ' + color;
+  document.getElementById('connText').textContent = text;
+}
+function setOnline(on) {
+  const d = document.getElementById('bigDot');
+  const t = document.getElementById('statusTxt');
+  const s = document.getElementById('statusSub');
+  d.style.background = on ? '#22c55e' : '#ef4444';
+  d.style.boxShadow  = on ? '0 0 12px #22c55e' : 'none';
+  t.textContent      = on ? '🟢 Online' : '🔴 Offline';
+  t.style.color      = on ? '#22c55e' : '#ef4444';
+  s.textContent      = on ? "Listening for Sir's call..." : 'Connection lost. Reconnecting...';
+}
+
+function ack() {
+  if (!currentCall) return;
+  document.getElementById('callModal').classList.add('hidden');
+  socket.emit('acknowledge_call', { callId: currentCall.callId, employeeName: currentCall.employeeName });
+  currentCall = null;
+}
+
+function playSound() {
+  try {
+    if (!audioCtx) audioCtx = new AudioContext();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    [[523.25,0],[659.25,.18],[783.99,.36]].forEach(([f,t]) => {
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.connect(g); g.connect(audioCtx.destination);
+      o.type = 'sine'; o.frequency.value = f;
+      const s = audioCtx.currentTime + t;
+      g.gain.setValueAtTime(0,s);
+      g.gain.linearRampToValueAtTime(0.6,s+.04);
+      g.gain.exponentialRampToValueAtTime(0.001,s+.5);
+      o.start(s); o.stop(s+.55);
+    });
+  } catch(e) { console.error(e); }
+}
+
+function speak(text) {
+  try {
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 0.9; u.volume = 1;
+    window.speechSynthesis.speak(u);
+  } catch(e) {}
+}
+</script>
+</body>
+</html>
