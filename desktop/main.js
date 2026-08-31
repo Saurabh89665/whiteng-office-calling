@@ -8,7 +8,7 @@
 const { app, BrowserWindow, Menu, Tray, shell, ipcMain } = require('electron');
 const path = require('path');
 const fs   = require('fs');
-const http = require('http');
+const https = require('https');
 
 // ── Load config ─────────────────────────────────
 function loadConfig() {
@@ -21,11 +21,11 @@ function loadConfig() {
       if (fs.existsSync(loc)) return JSON.parse(fs.readFileSync(loc, 'utf8'));
     } catch {}
   }
-  return { serverUrl: 'http://localhost:8000' };
+  return { serverUrl: 'https://whiteng-office-calling.onrender.com' };
 }
 
 const config    = loadConfig();
-const SERVER    = config.serverUrl || 'http://localhost:8000';
+const SERVER    = config.serverUrl || 'https://whiteng-office-calling.onrender.com';
 
 let mainWindow  = null;
 let tray        = null;
@@ -34,16 +34,23 @@ let isQuitting  = false;
 // ── Wait for server ─────────────────────────────
 function waitForServer(retries, cb) {
   const url = SERVER.replace(/\/$/, '') + '/health';
+  const client = url.startsWith('https') ? https : http;
   try {
-    http.get(url, (res) => {
+    client.get(url, (res) => {
       res.resume();
       if (res.statusCode === 200) { cb(true); return; }
       retry();
-    }).on('error', retry);
-  } catch { retry(); }
+    }).on('error', (err) => {
+      console.log('[Desktop] Health check error:', err.message);
+      retry();
+    });
+  } catch (err) {
+    console.log('[Desktop] Exception in health check:', err.message);
+    retry();
+  }
 
   function retry() {
-    if (retries <= 0) { cb(false); return; }
+    if (retries <= 0) { cb(true); return; } // Load URL anyway on timeout
     setTimeout(() => waitForServer(retries - 1, cb), 500);
   }
 }
@@ -59,7 +66,9 @@ function createWindow(serverReady) {
     minHeight: 600,
     title:  'Whiteng Software — Office Calling System',
     icon:   fs.existsSync(iconPath) ? iconPath : undefined,
-    backgroundColor: '#0a0a14',
+    backgroundColor: '#f8fafc',
+    autoHideMenuBar: true,
+    show: false,
     autoHideMenuBar: true,
     show: false,
     webPreferences: {
