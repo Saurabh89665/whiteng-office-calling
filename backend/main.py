@@ -256,25 +256,24 @@ async def update_employee_password(sid, data):
 @sio.event
 async def update_avatar(sid, data):
     sess = await sio.get_session(sid)
-    emp_id   = sess.get("employeeId") if sess else None
-    emp_name = sess.get("employeeName") if sess else None
-
-    if not emp_id and data:
-        emp_id   = data.get("employeeId")
-        emp_name = data.get("employeeName")
+    emp_id   = (data.get("employeeId") or (sess.get("employeeId") if sess else None))
+    emp_name = (data.get("employeeName") or (sess.get("employeeName") if sess else None))
 
     avatar_data = data.get("avatar", "") if data else ""
     emp = next((e for e in employees if (emp_id and e["id"] == emp_id) or (emp_name and e["name"] == emp_name)), None)
     if not emp:
+        log(f"update_avatar failed: Employee not found for id={emp_id}, name={emp_name}")
         return {"success": False, "error": "Employee not found."}
 
     emp["avatar"] = avatar_data
     save_employees(employees)
-    log(f"Employee {emp['name']} updated avatar photo")
+    log(f"Employee {emp['name']} updated avatar photo (Length: {len(avatar_data)})")
     
     # Broadcast status & list to ALL connected sockets (including Sir / Admin)
-    await sio.emit("employees_status", employee_status())
-    await sio.emit("employees_list",   employees_full_list())
+    status_list = employee_status()
+    full_list   = employees_full_list()
+    await sio.emit("employees_status", status_list)
+    await sio.emit("employees_list",   full_list)
     return {"success": True}
 
 # ── Employee login (with password) ──────────────────

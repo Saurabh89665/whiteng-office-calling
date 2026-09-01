@@ -50,7 +50,7 @@ export default function EmployeeDashboard() {
       const img = new Image()
       img.onload = () => {
         const canvas = document.createElement('canvas')
-        const MAX_SIZE = 300
+        const MAX_SIZE = 200
         let width = img.width
         let height = img.height
 
@@ -71,7 +71,7 @@ export default function EmployeeDashboard() {
         const ctx = canvas.getContext('2d')
         ctx.drawImage(img, 0, 0, width, height)
 
-        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.75)
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.65)
         setAvatar(compressedDataUrl)
         sessionStorage.setItem('empAvatar', compressedDataUrl)
 
@@ -81,7 +81,7 @@ export default function EmployeeDashboard() {
           employeeName: empName,
           avatar: compressedDataUrl
         }, (res) => {
-          if (res && res.success) console.log('Avatar updated successfully!')
+          if (res && res.success) console.log('Avatar updated successfully on server!')
         })
       }
       img.src = evt.target.result
