@@ -85,26 +85,56 @@ export default function EmployeeDashboard() {
       if (!audioCtx.current) audioCtx.current = new AudioContext()
       const ctx = audioCtx.current
       if (ctx.state === 'suspended') ctx.resume()
-      ;[[523.25, 0], [659.25, 0.18], [783.99, 0.36], [1046.50, 0.54]].forEach(([freq, delay]) => {
-        const osc = ctx.createOscillator(), gain = ctx.createGain()
-        osc.connect(gain); gain.connect(ctx.destination)
-        osc.type = 'sine'; osc.frequency.value = freq
-        const t = ctx.currentTime + delay
-        gain.gain.setValueAtTime(0, t)
-        gain.gain.linearRampToValueAtTime(0.7, t + 0.04)
-        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.5)
-        osc.start(t); osc.stop(t + 0.55)
+      
+      // Professional 4-tone ascending ringtone chime (C5, E5, G5, C6)
+      const notes = [
+        { freq: 523.25, time: 0, duration: 0.25 },     // C5
+        { freq: 659.25, time: 0.15, duration: 0.25 },   // E5
+        { freq: 783.99, time: 0.30, duration: 0.35 },   // G5
+        { freq: 1046.50, time: 0.50, duration: 0.6 }    // C6
+      ]
+
+      notes.forEach(({ freq, time, duration }) => {
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.type = 'triangle' // Richer tone than pure sine
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + time)
+        
+        const startTime = ctx.currentTime + time
+        gain.gain.setValueAtTime(0, startTime)
+        gain.gain.linearRampToValueAtTime(0.8, startTime + 0.03)
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration)
+        
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        
+        osc.start(startTime)
+        osc.stop(startTime + duration + 0.05)
       })
     } catch (e) { console.error('Audio error', e) }
   }
 
   function speak(text) {
     try {
-      window.speechSynthesis?.cancel()
+      if (!window.speechSynthesis) return
+      window.speechSynthesis.cancel()
+
       const u = new SpeechSynthesisUtterance(text)
-      u.rate = 0.9; u.volume = 1
-      window.speechSynthesis?.speak(u)
-    } catch (e) {}
+      u.rate = 0.92   // Natural fluent speaking pace
+      u.pitch = 1.05  // Clear professional tone
+      u.volume = 1.0
+
+      // Select best fluent voice (Google US/UK English or Microsoft English)
+      const voices = window.speechSynthesis.getVoices()
+      const preferredVoice = voices.find(v => 
+        (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Microsoft') || v.name.includes('Samantha') || v.name.includes('Zira') || v.name.includes('Jenny')) &&
+        v.lang.startsWith('en')
+      ) || voices.find(v => v.lang.startsWith('en'))
+
+      if (preferredVoice) u.voice = preferredVoice
+
+      window.speechSynthesis.speak(u)
+    } catch (e) { console.error('TTS error', e) }
   }
 
   return (
