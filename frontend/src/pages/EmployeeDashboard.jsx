@@ -91,14 +91,18 @@ export default function EmployeeDashboard() {
 
   function handleCall(data) {
     setIncomingCall(data)
-    playChime()
+    if (data.isBroadcast) {
+      playBuzzer()
+    } else {
+      playChime()
+    }
     // Add comma after name for a natural, clear pause
     const speechText = data.isBroadcast
       ? `Attention everyone... Please report to the cabin.`
       : `${data.employeeName}... Please report to the cabin.`
     
-    // Play speech slightly after chime completes
-    setTimeout(() => speak(speechText), 700)
+    // Play speech slightly after chime/buzzer completes
+    setTimeout(() => speak(speechText), data.isBroadcast ? 1000 : 700)
   }
 
   function acknowledge() {
@@ -111,6 +115,33 @@ export default function EmployeeDashboard() {
     sessionStorage.clear()
     socket.disconnect()
     navigate('/')
+  }
+
+  function playBuzzer() {
+    try {
+      if (!audioCtx.current) audioCtx.current = new AudioContext()
+      const ctx = audioCtx.current
+      if (ctx.state === 'suspended') ctx.resume()
+
+      // High-priority urgent 3-beep alarm buzzer (Square wave tone)
+      ;[0, 0.25, 0.50].forEach((delay) => {
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.type = 'sawtooth' // Loud alert buzzer sound
+        osc.frequency.setValueAtTime(880, ctx.currentTime + delay) // A5 frequency
+        
+        const startTime = ctx.currentTime + delay
+        gain.gain.setValueAtTime(0, startTime)
+        gain.gain.linearRampToValueAtTime(0.9, startTime + 0.02)
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.18)
+        
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        
+        osc.start(startTime)
+        osc.stop(startTime + 0.20)
+      })
+    } catch (e) { console.error('Buzzer sound error', e) }
   }
 
   function playChime() {
