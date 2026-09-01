@@ -16,9 +16,27 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-PORT         = int(os.getenv("PORT", 8000))
-SIR_PASSWORD = os.getenv("SIR_PASSWORD", "admin123")
-BASE_DIR     = Path(__file__).parent
+PORT               = int(os.getenv("PORT", 8000))
+SIR_PASSWORD       = os.getenv("SIR_PASSWORD", "admin123")
+ALLOWED_OFFICE_IPS = os.getenv("ALLOWED_OFFICE_IPS", "").strip()  # Comma-separated list of company Wi-Fi public IPs
+BASE_DIR           = Path(__file__).parent
+
+def get_client_ip(environ) -> str:
+    """Extract client IP address handling proxies (X-Forwarded-For)."""
+    if "HTTP_X_FORWARDED_FOR" in environ:
+        return environ["HTTP_X_FORWARDED_FOR"].split(",")[0].strip()
+    if "asgi.scope" in environ:
+        client = environ["asgi.scope"].get("client")
+        if client:
+            return client[0]
+    return ""
+
+def is_ip_allowed(client_ip: str) -> bool:
+    """Check if the client IP is allowed. Returns True if ALLOWED_OFFICE_IPS is empty (disabled) or matches."""
+    if not ALLOWED_OFFICE_IPS:
+        return True
+    allowed_list = [ip.strip() for ip in ALLOWED_OFFICE_IPS.split(",") if ip.strip()]
+    return client_ip in allowed_list
 
 # ── Employee data (load from JSON, save on changes) ─
 EMP_FILE = BASE_DIR / "employees.json"
@@ -233,6 +251,12 @@ async def update_employee_password(sid, data):
 # ── Employee login (with password) ──────────────────
 @sio.event
 async def employee_login(sid, data):
+    environ = sio.environ.get(sid, {})
+    client_ip = get_client_ip(environ)
+    if not is_ip_allowed(client_ip):
+        log(f"Employee login BLOCKED for IP {client_ip} (not on company Wi-Fi)")
+        return {"success": False, "error": "Login restricted! You must be connected to company Wi-Fi."}
+
     emp_id   = data.get("employeeId")
     emp_name = data.get("employeeName")
     password = (data.get("password") or "").strip()
@@ -247,7 +271,7 @@ async def employee_login(sid, data):
     sessions[t] = {"role": "employee", "name": emp_name, "id": emp_id, "sid": sid}
     await sio.save_session(sid, {"token": t, "role": "employee", "employeeId": emp_id, "employeeName": emp_name})
     online_employees[emp_id] = {"id": emp_id, "name": emp_name, "sid": sid}
-    log(f"Employee logged in: {emp_name}")
+    log(f"Employee logged in: {emp_name} (from IP {client_ip})")
     await broadcast_sir("employees_status", employee_status())
     return {"success": True, "token": t}
 
