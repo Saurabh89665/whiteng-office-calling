@@ -18,6 +18,10 @@ export default function EmployeeDashboard() {
     const doReconnect = () => {
       socket.emit('employee_reconnect', { token, employeeId: empId, employeeName: empName }, (res) => {
         if (res && !res.success) navigate('/')
+        else if (res && res.avatar) {
+          setAvatar(res.avatar)
+          sessionStorage.setItem('empAvatar', res.avatar)
+        }
       })
     }
     if (!socket.connected) { socket.connect(); socket.once('connect', doReconnect) }
