@@ -80,13 +80,18 @@ def new_token() -> str:
 
 def employee_status():
     return [
-        {"id": e["id"], "name": e["name"], "online": e["id"] in online_employees}
+        {
+            "id": e["id"],
+            "name": e["name"],
+            "online": e["id"] in online_employees,
+            "avatar": e.get("avatar", "")
+        }
         for e in employees
     ]
 
 def employees_full_list():
     """For management panel — excludes passwordHash."""
-    return [{"id": e["id"], "name": e["name"]} for e in employees]
+    return [{"id": e["id"], "name": e["name"], "avatar": e.get("avatar", "")} for e in employees]
 
 async def broadcast_sir(event, data):
     for sid in list(sir_sids):
@@ -246,6 +251,23 @@ async def update_employee_password(sid, data):
     emp["passwordHash"] = hash_pw(password)
     save_employees(employees)
     log(f"Sir updated password for: {emp['name']}")
+    return {"success": True}
+
+@sio.event
+async def update_avatar(sid, data):
+    sess = await sio.get_session(sid)
+    if not sess or sess.get("role") != "employee":
+        return {"success": False, "error": "Unauthorized."}
+    emp_id = sess.get("employeeId")
+    avatar_data = data.get("avatar", "")
+    emp = next((e for e in employees if e["id"] == emp_id), None)
+    if not emp:
+        return {"success": False, "error": "Employee not found."}
+    emp["avatar"] = avatar_data
+    save_employees(employees)
+    log(f"Employee {emp['name']} updated avatar photo")
+    await broadcast_sir("employees_status", employee_status())
+    await broadcast_sir("employees_list",   employees_full_list())
     return {"success": True}
 
 # ── Employee login (with password) ──────────────────

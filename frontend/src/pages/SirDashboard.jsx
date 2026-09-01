@@ -168,7 +168,12 @@ export default function SirDashboard() {
           <div className="company">🏢 Whiteng Software</div>
           <div className="role">Admin / Super Admin Dashboard</div>
         </div>
-        <div className="admin-badge-header">👔 Sir — Admin</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div className="admin-badge-header">👔 Sir — Admin</div>
+          <button className="btn-logout" onClick={() => { sessionStorage.clear(); socket.disconnect(); navigate('/'); }}>
+            🚪 Logout
+          </button>
+        </div>
       </header>
 
       {/* Tabs */}
@@ -215,7 +220,13 @@ export default function SirDashboard() {
                   <div key={emp.id} className={`emp-card ${emp.online ? 'online' : 'offline'}`}
                     onClick={() => emp.online && callEmployee(emp)}>
                     {calling[emp.id] && <div className="calling-overlay">📞 Calling…</div>}
-                    <div className="emp-avatar">{emp.name.charAt(0)}</div>
+                    <div className="emp-avatar">
+                      {emp.avatar ? (
+                        <img src={emp.avatar} alt={emp.name} />
+                      ) : (
+                        emp.name.charAt(0)
+                      )}
+                    </div>
                     <div className="emp-card-name">{emp.name}</div>
                     <div className="emp-card-status">{emp.online ? '🟢 Online' : '🔴 Offline'}</div>
                     {emp.online && (

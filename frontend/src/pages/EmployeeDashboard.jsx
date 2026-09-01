@@ -5,10 +5,12 @@ import socket from '../socket'
 export default function EmployeeDashboard() {
   const [connected, setConnected]       = useState(true)
   const [incomingCall, setIncomingCall] = useState(null)
+  const [avatar, setAvatar]             = useState(sessionStorage.getItem('empAvatar') || '')
   const token   = sessionStorage.getItem('token')
   const empName = sessionStorage.getItem('empName') || 'Employee'
   const empId   = sessionStorage.getItem('empId')
   const audioCtx = useRef(null)
+  const fileInputRef = useRef(null)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -36,6 +38,23 @@ export default function EmployeeDashboard() {
     }
   }, [])
 
+  function handlePhotoUpload(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Photo must be less than 2MB.')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = (evt) => {
+      const dataUrl = evt.target.result
+      setAvatar(dataUrl)
+      sessionStorage.setItem('empAvatar', dataUrl)
+      socket.emit('update_avatar', { avatar: dataUrl })
+    }
+    reader.readAsDataURL(file)
+  }
+
   function handleCall(data) {
     setIncomingCall(data)
     playChime()
@@ -49,6 +68,12 @@ export default function EmployeeDashboard() {
     if (!incomingCall) return
     socket.emit('acknowledge_call', { callId: incomingCall.callId, employeeName: incomingCall.employeeName })
     setIncomingCall(null)
+  }
+
+  function logout() {
+    sessionStorage.clear()
+    socket.disconnect()
+    navigate('/')
   }
 
   function playChime() {
@@ -83,7 +108,7 @@ export default function EmployeeDashboard() {
       <div className="conn-bar">
         <div className={`dot ${connected ? 'dot-green' : 'dot-red'}`} />
         <span>{connected ? 'Connected' : 'Disconnected — reconnecting…'}</span>
-        <span className="conn-right">Whiteng Software · Python Backend</span>
+        <span className="conn-right">Whiteng Software</span>
       </div>
 
       <header className="emp-header">
@@ -91,11 +116,48 @@ export default function EmployeeDashboard() {
           <div className="company">🏢 Whiteng Software</div>
           <div className="tagline">Office Calling System</div>
         </div>
+        <button className="btn-logout" onClick={logout}>
+          🚪 Logout
+        </button>
       </header>
 
       <div className="emp-body">
         <div className="status-card">
-          <div className="welcome-icon">👤</div>
+          <div
+            className="welcome-icon emp-avatar"
+            style={{ margin: '0 auto 16px', cursor: 'pointer', position: 'relative' }}
+            onClick={() => fileInputRef.current?.click()}
+            title="Click to change profile photo"
+          >
+            {avatar ? (
+              <img src={avatar} alt={empName} />
+            ) : (
+              empName.charAt(0)
+            )}
+          </div>
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept="image/*"
+            style={{ display: 'none' }}
+            onChange={handlePhotoUpload}
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            style={{
+              background: 'transparent',
+              border: '1px solid var(--border)',
+              borderRadius: '6px',
+              padding: '4px 10px',
+              fontSize: '.75rem',
+              color: 'var(--primary)',
+              cursor: 'pointer',
+              marginBottom: '16px',
+              fontWeight: '600'
+            }}
+          >
+            📷 Upload Profile Photo
+          </button>
           <div className="welcome-name">Welcome, {empName}!</div>
           <div className="welcome-sub">You are logged in and ready to receive calls from Sir</div>
           <div className="status-display">

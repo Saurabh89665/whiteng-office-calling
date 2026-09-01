@@ -221,33 +221,51 @@ input, textarea { user-select: text; }
 .btn-broadcast:hover:not(:disabled) { background: #b91c1c; transform: translateY(-1px); }
 .btn-broadcast:disabled { opacity: .5; cursor: not-allowed; }
 
+/* Logout Button Header */
+.btn-logout {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px; border-radius: 8px;
+  background: var(--red-bg); color: var(--red);
+  border: 1px solid rgba(220,38,38,.25);
+  font-size: .8rem; font-weight: 700; cursor: pointer;
+  font-family: inherit; transition: all .2s;
+}
+.btn-logout:hover { background: rgba(220,38,38,.18); transform: translateY(-1px); }
+
 .section-label { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--text3); margin-bottom: 14px; }
 .online-count { color: var(--green); margin-left: 8px; font-weight: 700; }
 
-.emp-cards { display: grid; grid-template-columns: repeat(auto-fill,minmax(150px,1fr)); gap: 14px; }
+.emp-cards { display: grid; grid-template-columns: repeat(auto-fill,minmax(200px,1fr)); gap: 18px; }
 .emp-card {
   background: var(--card); border: 1.5px solid var(--border);
-  border-radius: var(--radius); padding: 18px 14px;
-  text-align: center; transition: all .2s; position: relative; overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0,0,0,.03);
+  border-radius: 16px; padding: 24px 18px;
+  text-align: center; transition: all .25s cubic-bezier(.4,0,.2,1); position: relative; overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,.04);
 }
-.emp-card.online  { cursor: pointer; border-color: rgba(22,163,74,.3); }
-.emp-card.online:hover { border-color: var(--green); background: rgba(22,163,74,.03); transform: translateY(-3px); box-shadow: 0 8px 20px rgba(22,163,74,.1); }
-.emp-card.offline { opacity: .6; cursor: default; background: var(--bg2); }
+.emp-card.online  { cursor: pointer; border-color: rgba(22,163,74,.35); }
+.emp-card.online:hover { border-color: var(--green); background: rgba(22,163,74,.03); transform: translateY(-4px); box-shadow: 0 12px 28px rgba(22,163,74,.15); }
+.emp-card.offline { opacity: .65; cursor: default; background: var(--bg2); }
 .emp-avatar {
-  width: 46px; height: 46px; border-radius: 50%;
+  width: 72px; height: 72px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  font-size: 1.2rem; font-weight: 800;
-  margin: 0 auto 10px; background: var(--bg2); border: 2px solid var(--border); color: var(--text1);
+  font-size: 1.8rem; font-weight: 800;
+  margin: 0 auto 12px; background: var(--bg2); border: 3px solid var(--border); color: var(--text1);
+  object-fit: cover; overflow: hidden;
 }
-.emp-card.online .emp-avatar { border-color: var(--green); }
-.emp-card-name   { font-size: .9rem; font-weight: 700; margin-bottom: 5px; color: var(--text1); }
-.emp-card-status { font-size: .72rem; font-weight: 600; }
+.emp-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.emp-card.online .emp-avatar { border-color: var(--green); box-shadow: 0 0 10px rgba(22,163,74,.2); }
+.emp-card-name   { font-size: 1.05rem; font-weight: 700; margin-bottom: 6px; color: var(--text1); }
+.emp-card-status { font-size: .8rem; font-weight: 600; }
 .emp-card.online  .emp-card-status { color: var(--green); }
 .emp-card.offline .emp-card-status { color: var(--text3); }
 .call-btn {
-  display: none; margin-top: 10px; padding: 6px 12px;
-  background: var(--green); color: #fff; border: none; border-radius: 6px;
+  display: none; margin-top: 14px; padding: 9px 14px;
+  background: var(--green); color: #fff; border: none; border-radius: 8px;
+  font-size: .85rem; font-weight: 800; cursor: pointer; width: 100%; font-family: inherit;
+  transition: all .2s;
+}
+.emp-card.online:hover .call-btn { display: block; animation: fadeIn .2s ease; }
+.call-btn:hover { background: #15803d; }
   font-size: .78rem; font-weight: 700; cursor: pointer; width: 100%; font-family: inherit;
 }
 .emp-card.online:hover .call-btn { display: block; }
