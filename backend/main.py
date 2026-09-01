@@ -271,8 +271,10 @@ async def update_avatar(sid, data):
     emp["avatar"] = avatar_data
     save_employees(employees)
     log(f"Employee {emp['name']} updated avatar photo")
-    await broadcast_sir("employees_status", employee_status())
-    await broadcast_sir("employees_list",   employees_full_list())
+    
+    # Broadcast status & list to ALL connected sockets (including Sir / Admin)
+    await sio.emit("employees_status", employee_status())
+    await sio.emit("employees_list",   employees_full_list())
     return {"success": True}
 
 # ── Employee login (with password) ──────────────────
