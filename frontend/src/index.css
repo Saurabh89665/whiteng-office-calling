@@ -235,38 +235,36 @@ input, textarea { user-select: text; }
 .section-label { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--text3); margin-bottom: 14px; }
 .online-count { color: var(--green); margin-left: 8px; font-weight: 700; }
 
-.emp-cards { display: grid; grid-template-columns: repeat(auto-fill,minmax(240px,1fr)); gap: 24px; }
+.emp-cards { display: grid; grid-template-columns: repeat(auto-fill,minmax(220px,1fr)); gap: 24px; }
 .emp-card {
   background: var(--card); border: 2px solid var(--border);
-  border-radius: 20px; padding: 28px 20px;
+  border-radius: 16px; padding: 0;
   text-align: center; transition: all .25s cubic-bezier(.4,0,.2,1); position: relative; overflow: hidden;
   box-shadow: 0 4px 14px rgba(0,0,0,.04);
-  display: flex; flex-direction: column; align-items: center; justify-content: space-between;
-  min-height: 250px;
+  display: flex; flex-direction: column; align-items: center;
 }
 .emp-card.online  { cursor: pointer; border-color: rgba(22,163,74,.4); }
-.emp-card.online:hover { border-color: var(--green); background: rgba(22,163,74,.03); transform: translateY(-5px); box-shadow: 0 16px 36px rgba(22,163,74,.18); }
-.emp-card.offline { opacity: .7; cursor: default; background: var(--bg2); }
+.emp-card.online:hover { border-color: var(--green); transform: translateY(-5px); box-shadow: 0 16px 36px rgba(22,163,74,.18); }
+.emp-card.offline { opacity: .75; cursor: default; background: var(--bg2); }
 
 .emp-avatar {
-  width: 100px; height: 100px; border-radius: 50%;
+  width: 100%; height: 180px; border-radius: 0;
   display: flex; align-items: center; justify-content: center;
-  font-size: 2.5rem; font-weight: 800;
-  margin: 0 auto 14px; background: var(--bg2); border: 3px solid var(--border); color: var(--text1);
+  font-size: 3.5rem; font-weight: 800;
+  margin: 0; background: var(--bg2); border-bottom: 2px solid var(--border); color: var(--text1);
   overflow: hidden; flex-shrink: 0;
-  box-shadow: 0 4px 10px rgba(0,0,0,.06);
 }
-.emp-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
-.emp-card.online .emp-avatar { border-color: var(--green); box-shadow: 0 0 14px rgba(22,163,74,.25); }
+.emp-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 0; }
+.emp-card.online .emp-avatar { border-bottom-color: var(--green); }
 
-.emp-card-info { width: 100%; }
-.emp-card-name   { font-size: 1.2rem; font-weight: 800; margin-bottom: 6px; color: var(--text1); }
+.emp-card-info { width: 100%; padding: 16px; display: flex; flex-direction: column; align-items: center; }
+.emp-card-name   { font-size: 1.2rem; font-weight: 800; margin-bottom: 4px; color: var(--text1); }
 .emp-card-status { font-size: .85rem; font-weight: 700; }
 .emp-card.online  .emp-card-status { color: var(--green); }
 .emp-card.offline .emp-card-status { color: var(--text3); }
 
 .call-btn {
-  display: none; margin-top: 16px; padding: 11px 18px;
+  display: none; margin-top: 12px; padding: 10px 16px;
   background: var(--green); color: #fff; border: none; border-radius: 10px;
   font-size: .92rem; font-weight: 800; cursor: pointer; width: 100%; font-family: inherit;
   transition: all .2s; box-shadow: 0 4px 12px rgba(22,163,74,.3);
@@ -275,10 +273,10 @@ input, textarea { user-select: text; }
 .call-btn:hover { background: #15803d; transform: translateY(-1px); }
 
 .calling-overlay {
-  position: absolute; inset: 0; background: rgba(22,163,74,.15);
+  position: absolute; inset: 0; background: rgba(22,163,74,.2);
   display: flex; align-items: center; justify-content: center;
-  font-weight: 800; font-size: 1rem; color: var(--green);
-  border-radius: 20px; animation: pulse 1s infinite;
+  font-weight: 800; font-size: 1.1rem; color: var(--green);
+  border-radius: 16px; animation: pulse 1s infinite; backdrop-filter: blur(2px);
 }
 
 /* Sidebar */

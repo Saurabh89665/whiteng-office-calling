@@ -227,13 +227,15 @@ export default function SirDashboard() {
                         emp.name.charAt(0)
                       )}
                     </div>
-                    <div className="emp-card-name">{emp.name}</div>
-                    <div className="emp-card-status">{emp.online ? '🟢 Online' : '🔴 Offline'}</div>
-                    {emp.online && (
-                      <button className="call-btn" onClick={e => { e.stopPropagation(); callEmployee(emp) }}>
-                        📞 Call
-                      </button>
-                    )}
+                    <div className="emp-card-info">
+                      <div className="emp-card-name">{emp.name}</div>
+                      <div className="emp-card-status">{emp.online ? '🟢 Online' : '🔴 Offline'}</div>
+                      {emp.online && (
+                        <button className="call-btn" onClick={e => { e.stopPropagation(); callEmployee(emp) }}>
+                          📞 Call
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
