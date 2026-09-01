@@ -93,8 +93,8 @@ export default function EmployeeDashboard() {
     setIncomingCall(data)
     playChime()
     const speechText = data.isBroadcast
-      ? `Attention everyone! Sir is calling all employees to the cabin immediately!`
-      : `${data.employeeName}, Sir is calling you. Please report to Sir's cabin.`
+      ? `Attention everyone, please report to the cabin.`
+      : `${data.employeeName}, please report to the cabin.`
     speak(speechText)
   }
 
