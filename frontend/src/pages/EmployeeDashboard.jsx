@@ -92,17 +92,14 @@ export default function EmployeeDashboard() {
   function handleCall(data) {
     setIncomingCall(data)
     if (data.isBroadcast) {
+      // For Everyone call: ONLY play buzzer (no voice speech)
       playBuzzer()
     } else {
+      // For Individual employee call: play chime tone + speak voice announcement
       playChime()
+      const speechText = `${data.employeeName}... Please report to the cabin.`
+      setTimeout(() => speak(speechText), 700)
     }
-    // Add comma after name for a natural, clear pause
-    const speechText = data.isBroadcast
-      ? `Attention everyone... Please report to the cabin.`
-      : `${data.employeeName}... Please report to the cabin.`
-    
-    // Play speech slightly after chime/buzzer completes
-    setTimeout(() => speak(speechText), data.isBroadcast ? 1000 : 700)
   }
 
   function acknowledge() {
