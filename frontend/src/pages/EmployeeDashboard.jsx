@@ -45,16 +45,46 @@ export default function EmployeeDashboard() {
   function handlePhotoUpload(e) {
     const file = e.target.files[0]
     if (!file) return
-    if (file.size > 2 * 1024 * 1024) {
-      alert('Photo must be less than 2MB.')
-      return
-    }
     const reader = new FileReader()
     reader.onload = (evt) => {
-      const dataUrl = evt.target.result
-      setAvatar(dataUrl)
-      sessionStorage.setItem('empAvatar', dataUrl)
-      socket.emit('update_avatar', { avatar: dataUrl })
+      const img = new Image()
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        const MAX_SIZE = 600
+        let width = img.width
+        let height = img.height
+
+        if (width > height) {
+          if (width > MAX_SIZE) {
+            height *= MAX_SIZE / width
+            width = MAX_SIZE
+          }
+        } else {
+          if (height > MAX_SIZE) {
+            width *= MAX_SIZE / height
+            height = MAX_SIZE
+          }
+        }
+
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(img, 0, 0, width, height)
+
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.85)
+        setAvatar(compressedDataUrl)
+        sessionStorage.setItem('empAvatar', compressedDataUrl)
+
+        socket.emit('update_avatar', {
+          token,
+          employeeId: empId,
+          employeeName: empName,
+          avatar: compressedDataUrl
+        }, (res) => {
+          if (res && res.success) console.log('Avatar updated successfully!')
+        })
+      }
+      img.src = evt.target.result
     }
     reader.readAsDataURL(file)
   }

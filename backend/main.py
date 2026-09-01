@@ -256,13 +256,18 @@ async def update_employee_password(sid, data):
 @sio.event
 async def update_avatar(sid, data):
     sess = await sio.get_session(sid)
-    if not sess or sess.get("role") != "employee":
-        return {"success": False, "error": "Unauthorized."}
-    emp_id = sess.get("employeeId")
-    avatar_data = data.get("avatar", "")
-    emp = next((e for e in employees if e["id"] == emp_id), None)
+    emp_id   = sess.get("employeeId") if sess else None
+    emp_name = sess.get("employeeName") if sess else None
+
+    if not emp_id and data:
+        emp_id   = data.get("employeeId")
+        emp_name = data.get("employeeName")
+
+    avatar_data = data.get("avatar", "") if data else ""
+    emp = next((e for e in employees if (emp_id and e["id"] == emp_id) or (emp_name and e["name"] == emp_name)), None)
     if not emp:
         return {"success": False, "error": "Employee not found."}
+
     emp["avatar"] = avatar_data
     save_employees(employees)
     log(f"Employee {emp['name']} updated avatar photo")
