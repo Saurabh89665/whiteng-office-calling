@@ -241,23 +241,6 @@ export default function SirDashboard() {
               </div>
             )}
           </main>
-
-          <aside className="sir-sidebar">
-            <div className="sidebar-hdr">📋 Call History</div>
-            <div className="call-log">
-              {callLog.length === 0 ? (
-                <div className="log-empty"><span>📭</span><span>No calls yet</span></div>
-              ) : callLog.map((item, i) => (
-                <div key={i} className={`log-item ${item.acked ? 'acked' : ''}`}>
-                  <div className="log-time">{item.time}</div>
-                  <div className="log-text">📞 Called <b>{item.name}</b></div>
-                  <div className={`log-ack ${item.acked ? 'done' : ''}`}>
-                    {item.acked ? `✅ Received · ${item.ackTime}` : '⏳ Waiting…'}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </aside>
         </div>
       )}
 

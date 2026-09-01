@@ -247,28 +247,33 @@ input, textarea { user-select: text; }
 .online-count { color: var(--green); margin-left: 8px; font-weight: 800; }
 
 /* ── BEAUTIFUL SQUARE EMPLOYEE CARDS ── */
-.emp-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 24px; }
+.emp-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 28px; }
 .emp-card {
   background: #ffffff;
   border: 2px solid var(--border);
   border-radius: 20px;
   padding: 0;
   text-align: center;
-  transition: all .3s cubic-bezier(.16, 1, 0.3, 1);
+  transition: all .35s cubic-bezier(.16, 1, 0.3, 1);
   position: relative;
   overflow: hidden;
   box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
   align-items: center;
+  animation: slideUp .4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .emp-card.online  { cursor: pointer; border-color: rgba(16,185,129,.4); }
-.emp-card.online:hover { border-color: var(--green); transform: translateY(-6px); box-shadow: 0 16px 36px rgba(16,185,129,.18); }
+.emp-card.online:hover {
+  border-color: var(--green);
+  transform: translateY(-8px) scale(1.01);
+  box-shadow: 0 20px 40px rgba(16,185,129,.2);
+}
 .emp-card.offline { opacity: .75; cursor: default; background: var(--bg2); }
 
 .emp-avatar {
   width: 100%;
-  height: 200px;
+  height: 220px;
   border-radius: 0;
   display: flex;
   align-items: center;
