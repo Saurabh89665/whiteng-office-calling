@@ -92,10 +92,13 @@ export default function EmployeeDashboard() {
   function handleCall(data) {
     setIncomingCall(data)
     playChime()
+    // Add comma after name for a natural, clear pause
     const speechText = data.isBroadcast
-      ? `Attention everyone, please report to the cabin.`
-      : `${data.employeeName}, please report to the cabin.`
-    speak(speechText)
+      ? `Attention everyone... Please report to the cabin.`
+      : `${data.employeeName}... Please report to the cabin.`
+    
+    // Play speech slightly after chime completes
+    setTimeout(() => speak(speechText), 700)
   }
 
   function acknowledge() {
@@ -116,23 +119,23 @@ export default function EmployeeDashboard() {
       const ctx = audioCtx.current
       if (ctx.state === 'suspended') ctx.resume()
       
-      // Professional 4-tone ascending ringtone chime (C5, E5, G5, C6)
+      // Warm, professional office chime (C5 -> G5 -> C6)
       const notes = [
-        { freq: 523.25, time: 0, duration: 0.25 },     // C5
-        { freq: 659.25, time: 0.15, duration: 0.25 },   // E5
-        { freq: 783.99, time: 0.30, duration: 0.35 },   // G5
-        { freq: 1046.50, time: 0.50, duration: 0.6 }    // C6
+        { freq: 523.25, time: 0, duration: 0.22 },     // C5
+        { freq: 659.25, time: 0.14, duration: 0.22 },   // E5
+        { freq: 783.99, time: 0.28, duration: 0.30 },   // G5
+        { freq: 1046.50, time: 0.45, duration: 0.55 }   // C6
       ]
 
       notes.forEach(({ freq, time, duration }) => {
         const osc = ctx.createOscillator()
         const gain = ctx.createGain()
-        osc.type = 'triangle' // Richer tone than pure sine
+        osc.type = 'triangle'
         osc.frequency.setValueAtTime(freq, ctx.currentTime + time)
         
         const startTime = ctx.currentTime + time
         gain.gain.setValueAtTime(0, startTime)
-        gain.gain.linearRampToValueAtTime(0.8, startTime + 0.03)
+        gain.gain.linearRampToValueAtTime(0.7, startTime + 0.03)
         gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration)
         
         osc.connect(gain)
@@ -150,14 +153,14 @@ export default function EmployeeDashboard() {
       window.speechSynthesis.cancel()
 
       const u = new SpeechSynthesisUtterance(text)
-      u.rate = 0.92   // Natural fluent speaking pace
-      u.pitch = 1.05  // Clear professional tone
+      u.rate = 0.82    // Slow, clear, professional speaking speed
+      u.pitch = 1.0    // Natural professional pitch
       u.volume = 1.0
 
-      // Select best fluent voice (Google US/UK English or Microsoft English)
+      // Select highest quality natural English voice available
       const voices = window.speechSynthesis.getVoices()
       const preferredVoice = voices.find(v => 
-        (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Microsoft') || v.name.includes('Samantha') || v.name.includes('Zira') || v.name.includes('Jenny')) &&
+        (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Online') || v.name.includes('Microsoft') || v.name.includes('Jenny') || v.name.includes('Guy') || v.name.includes('Aria') || v.name.includes('Zira')) &&
         v.lang.startsWith('en')
       ) || voices.find(v => v.lang.startsWith('en'))
 
