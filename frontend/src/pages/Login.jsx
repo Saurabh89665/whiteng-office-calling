@@ -16,6 +16,7 @@ export default function Login() {
   useEffect(() => {
     socket.disconnect()
     sessionStorage.clear()
+    // Do NOT clear localStorage here — it holds the saved auto-login credentials
 
     const handleBeforeInstall = (e) => {
       e.preventDefault()
@@ -93,10 +94,16 @@ export default function Login() {
         password: empPassword
       }, (res) => {
         if (res.success) {
+          // Save to sessionStorage (current tab)
           sessionStorage.setItem('token',   res.token)
           sessionStorage.setItem('role',    'employee')
           sessionStorage.setItem('empName', selectedEmp.name)
           sessionStorage.setItem('empId',   selectedEmp.id)
+          // Save to localStorage (persistent — auto-login next time)
+          localStorage.setItem('token',   res.token)
+          localStorage.setItem('role',    'employee')
+          localStorage.setItem('empName', selectedEmp.name)
+          localStorage.setItem('empId',   selectedEmp.id)
           navigate('/employee')
         } else {
           setMsg({ text: res.error || 'Login failed.', type: 'error' })

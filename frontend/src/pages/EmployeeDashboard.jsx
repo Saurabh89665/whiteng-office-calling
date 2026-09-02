@@ -64,6 +64,7 @@ export default function EmployeeDashboard() {
         const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.82)
         setAvatar(compressedDataUrl)
         sessionStorage.setItem('empAvatar', compressedDataUrl)
+        localStorage.setItem('empAvatar', compressedDataUrl)
 
         socket.emit('update_avatar', {
           token,
@@ -99,6 +100,11 @@ export default function EmployeeDashboard() {
 
   function logout() {
     sessionStorage.clear()
+    localStorage.removeItem('token')
+    localStorage.removeItem('role')
+    localStorage.removeItem('empName')
+    localStorage.removeItem('empId')
+    localStorage.removeItem('empAvatar')
     socket.disconnect()
     navigate('/')
   }
