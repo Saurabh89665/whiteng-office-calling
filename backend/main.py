@@ -21,6 +21,22 @@ SIR_PASSWORD       = os.getenv("SIR_PASSWORD", "admin123")
 ALLOWED_OFFICE_IPS = os.getenv("ALLOWED_OFFICE_IPS", "").strip()  # Comma-separated list of company Wi-Fi public IPs
 BASE_DIR           = Path(__file__).parent
 
+# ── Settings data (persisted) ───────────────────────
+SETTINGS_FILE = BASE_DIR / "settings.json"
+
+def load_settings() -> dict:
+    if SETTINGS_FILE.exists():
+        try:
+            return json.loads(SETTINGS_FILE.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return {"allowed_ips": []}
+
+def save_settings(data: dict):
+    SETTINGS_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+
+settings: dict = load_settings()
+
 def get_client_ip(environ) -> str:
     """Extract client IP address handling proxies (X-Forwarded-For)."""
     if "HTTP_X_FORWARDED_FOR" in environ:
@@ -32,10 +48,13 @@ def get_client_ip(environ) -> str:
     return ""
 
 def is_ip_allowed(client_ip: str) -> bool:
-    """Check if the client IP is allowed. Returns True if ALLOWED_OFFICE_IPS is empty (disabled) or matches."""
-    if not ALLOWED_OFFICE_IPS:
+    """Check if the client IP is allowed. Returns True if no IPs configured or matches allowed list."""
+    allowed_list = [ip.strip() for ip in settings.get("allowed_ips", []) if ip.strip()]
+    if not allowed_list:
+        if ALLOWED_OFFICE_IPS:
+            allowed_list = [ip.strip() for ip in ALLOWED_OFFICE_IPS.split(",") if ip.strip()]
+    if not allowed_list:
         return True
-    allowed_list = [ip.strip() for ip in ALLOWED_OFFICE_IPS.split(",") if ip.strip()]
     return client_ip in allowed_list
 
 # ── Employee data (load from JSON, save on changes) ─
@@ -157,6 +176,7 @@ async def sir_login(sid, data):
     log(f"Sir (Admin) logged in")
     await sio.emit("employees_status", employee_status(), to=sid)
     await sio.emit("employees_list",   employees_full_list(), to=sid)
+    await sio.emit("office_wifi_status", {"allowed_ips": settings.get("allowed_ips", []), "your_ip": get_client_ip(sio.environ.get(sid, {}))}, to=sid)
     return {"success": True, "token": t}
 
 @sio.event
@@ -171,7 +191,21 @@ async def sir_reconnect(sid, data):
     log(f"Sir reconnected")
     await sio.emit("employees_status", employee_status(), to=sid)
     await sio.emit("employees_list",   employees_full_list(), to=sid)
+    await sio.emit("office_wifi_status", {"allowed_ips": settings.get("allowed_ips", []), "your_ip": get_client_ip(sio.environ.get(sid, {}))}, to=sid)
     return {"success": True}
+
+@sio.event
+async def update_office_wifi(sid, data):
+    token = data.get("token")
+    if not is_sir(token):
+        return {"success": False, "error": "Unauthorized."}
+    ips = data.get("allowed_ips", [])
+    settings["allowed_ips"] = [ip.strip() for ip in ips if ip.strip()]
+    save_settings(settings)
+    log(f"Sir updated allowed office Wi-Fi IPs: {settings['allowed_ips']}")
+    client_ip = get_client_ip(sio.environ.get(sid, {}))
+    await broadcast_sir("office_wifi_status", {"allowed_ips": settings["allowed_ips"], "your_ip": client_ip})
+    return {"success": True, "allowed_ips": settings["allowed_ips"]}
 
 # ── Employee CRUD (Sir only) ─────────────────────────
 @sio.event
