@@ -431,43 +431,97 @@ input, textarea { user-select: text; }
 .emp-header .company { font-size: 1.25rem; font-weight: 800; color: var(--text1); letter-spacing: -.02em; }
 .emp-header .tagline { font-size: .78rem; color: var(--text3); font-weight: 500; margin-top: 1px; }
 
-.emp-body { flex: 1; display: flex; align-items: center; justify-content: center; padding: 24px; background: #ffffff; }
+.emp-body { flex: 1; display: flex; align-items: center; justify-content: center; padding: 24px; background: #f8fafc; }
+
 .status-card {
   background: #ffffff; border: 1.5px solid var(--border);
-  border-radius: 20px; padding: 44px 38px; text-align: center;
-  min-width: 360px; box-shadow: var(--shadow-md); animation: slideUp .3s ease;
-  display: flex; flex-direction: column; align-items: center;
+  border-radius: 24px; padding: 36px 42px; text-align: center;
+  min-width: 380px; max-width: 440px; width: 100%;
+  box-shadow: 0 4px 20px rgba(0,0,0,.07), 0 1px 4px rgba(0,0,0,.04);
+  animation: slideUp .35s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex; flex-direction: column; align-items: center; gap: 0;
 }
-.welcome-icon { font-size: 3.5rem; margin-bottom: 14px; }
-.welcome-name { font-size: 1.85rem; font-weight: 800; margin-bottom: 6px; color: var(--text1); letter-spacing: -.02em; }
-.welcome-sub  { font-size: .9rem; color: var(--text2); font-weight: 500; margin-bottom: 24px; }
+
+/* ── Perfect Square Profile Photo ── */
+.emp-profile-photo {
+  width: 140px; height: 140px;
+  border-radius: 18px;
+  overflow: hidden;
+  cursor: pointer;
+  position: relative;
+  border: 2.5px solid var(--border);
+  box-shadow: 0 4px 14px rgba(0,0,0,.1);
+  background: #f1f5f9;
+  margin-bottom: 14px;
+  transition: transform .2s ease, box-shadow .2s ease;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 3.5rem; font-weight: 800; color: var(--text3);
+}
+.emp-profile-photo:hover { transform: scale(1.03); box-shadow: 0 8px 22px rgba(0,0,0,.14); }
+.emp-profile-photo img {
+  width: 100%; height: 100%;
+  object-fit: cover;      /* always fills the box, no bars */
+  object-position: center top; /* focus on face area */
+  border-radius: 0;
+  display: block;
+}
+.emp-photo-overlay {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,.38);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity .2s ease;
+  font-size: 1.8rem;
+  border-radius: 16px;
+}
+.emp-profile-photo:hover .emp-photo-overlay { opacity: 1; }
+.emp-photo-uploading {
+  position: absolute; inset: 0;
+  background: rgba(255,255,255,.8);
+  display: flex; align-items: center; justify-content: center;
+  font-size: .78rem; font-weight: 700; color: var(--primary);
+  border-radius: 16px;
+}
+
+.upload-photo-btn {
+  background: transparent; border: 1px solid var(--border);
+  border-radius: 8px; padding: 5px 12px;
+  font-size: .75rem; color: var(--primary);
+  cursor: pointer; margin-bottom: 20px;
+  font-weight: 600; font-family: inherit;
+  transition: all .2s;
+}
+.upload-photo-btn:hover { background: var(--primary-bg); border-color: #bfdbfe; }
+
+.welcome-name { font-size: 1.75rem; font-weight: 800; margin-bottom: 5px; color: var(--text1); letter-spacing: -.02em; }
+.welcome-sub  { font-size: .88rem; color: var(--text2); font-weight: 500; margin-bottom: 24px; }
 .status-display { display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .big-dot {
-  width: 14px; height: 14px; border-radius: 50%;
+  width: 12px; height: 12px; border-radius: 50%;
   background: var(--green);
   animation: pulseDot 2s infinite;
 }
-.status-txt { font-size: 1rem; font-weight: 700; color: var(--green); }
-.status-sub { font-size: .82rem; color: var(--text3); }
+.status-txt { font-size: .95rem; font-weight: 700; color: var(--green); }
+.status-sub { font-size: .8rem; color: var(--text3); }
 
 /* Incoming call modal */
 .modal-overlay {
-  position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45);
-  backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center;
+  position: fixed; inset: 0; background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center;
   z-index: 999; animation: fadeIn .2s ease;
 }
 .call-modal {
   background: #ffffff; border: 2px solid var(--green);
-  border-radius: 20px; padding: 38px 34px; text-align: center; width: 380px;
-  box-shadow: var(--shadow-lg); animation: slideUp .25s ease;
+  border-radius: 22px; padding: 42px 36px; text-align: center; width: 400px;
+  box-shadow: 0 20px 50px rgba(0,0,0,.12); animation: slideUp .3s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.call-bell  { font-size: 4rem; display: block; margin-bottom: 16px; animation: ringBell 1s infinite; }
-.call-title { font-size: 1.5rem; font-weight: 800; color: var(--green); margin-bottom: 8px; }
-.call-body  { font-size: .98rem; color: var(--text2); margin-bottom: 26px; line-height: 1.5; font-weight: 500; }
+.call-bell  { font-size: 4rem; display: block; margin-bottom: 18px; animation: ringBell 1s infinite; }
+.call-title { font-size: 1.5rem; font-weight: 800; color: var(--green); margin-bottom: 10px; }
+.call-body  { font-size: .96rem; color: var(--text2); margin-bottom: 28px; line-height: 1.6; font-weight: 500; }
 .call-name  { color: var(--text1); font-weight: 800; }
 .ok-btn {
-  width: 100%; padding: 13px; background: var(--green); color: #fff;
-  border: none; border-radius: 12px; font-size: 1.05rem; font-weight: 800;
+  width: 100%; padding: 14px; background: var(--green); color: #fff;
+  border: none; border-radius: 12px; font-size: 1rem; font-weight: 800;
   cursor: pointer; font-family: inherit; transition: all .2s;
+  box-shadow: 0 4px 14px rgba(22,163,74,.3);
 }
-.ok-btn:hover { background: var(--green-h); transform: translateY(-1px); }
+.ok-btn:hover { background: var(--green-h); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(22,163,74,.4); }

@@ -6,6 +6,7 @@ export default function EmployeeDashboard() {
   const [connected, setConnected]       = useState(true)
   const [incomingCall, setIncomingCall] = useState(null)
   const [avatar, setAvatar]             = useState(sessionStorage.getItem('empAvatar') || '')
+  const [uploading, setUploading]       = useState(false)
   const token   = sessionStorage.getItem('token')
   const empName = sessionStorage.getItem('empName') || 'Employee'
   const empId   = sessionStorage.getItem('empId')
@@ -45,33 +46,22 @@ export default function EmployeeDashboard() {
   function handlePhotoUpload(e) {
     const file = e.target.files[0]
     if (!file) return
+    setUploading(true)
     const reader = new FileReader()
     reader.onload = (evt) => {
       const img = new Image()
       img.onload = () => {
         const canvas = document.createElement('canvas')
-        const MAX_SIZE = 200
-        let width = img.width
-        let height = img.height
-
-        if (width > height) {
-          if (width > MAX_SIZE) {
-            height *= MAX_SIZE / width
-            width = MAX_SIZE
-          }
-        } else {
-          if (height > MAX_SIZE) {
-            width *= MAX_SIZE / height
-            height = MAX_SIZE
-          }
-        }
-
-        canvas.width = width
-        canvas.height = height
+        // Crop to a perfect SQUARE from center, then resize to 300x300
+        const size = Math.min(img.width, img.height)
+        const sx = (img.width - size) / 2
+        const sy = (img.height - size) / 2
+        canvas.width  = 300
+        canvas.height = 300
         const ctx = canvas.getContext('2d')
-        ctx.drawImage(img, 0, 0, width, height)
+        ctx.drawImage(img, sx, sy, size, size, 0, 0, 300, 300)
 
-        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.65)
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.82)
         setAvatar(compressedDataUrl)
         sessionStorage.setItem('empAvatar', compressedDataUrl)
 
@@ -81,7 +71,8 @@ export default function EmployeeDashboard() {
           employeeName: empName,
           avatar: compressedDataUrl
         }, (res) => {
-          if (res && res.success) console.log('Avatar updated successfully on server!')
+          setUploading(false)
+          if (res && res.success) console.log('Photo updated on Admin dashboard!')
         })
       }
       img.src = evt.target.result
@@ -92,13 +83,11 @@ export default function EmployeeDashboard() {
   function handleCall(data) {
     setIncomingCall(data)
     if (data.isBroadcast) {
-      // For Everyone call: ONLY play buzzer (no voice speech)
       playBuzzer()
     } else {
-      // For Individual employee call: play chime tone + speak voice announcement
       playChime()
       const speechText = `${data.employeeName}... Please report to the cabin.`
-      setTimeout(() => speak(speechText), 700)
+      setTimeout(() => speak(speechText), 800)
     }
   }
 
@@ -114,86 +103,88 @@ export default function EmployeeDashboard() {
     navigate('/')
   }
 
+  function getCtx() {
+    if (!audioCtx.current) audioCtx.current = new AudioContext()
+    const ctx = audioCtx.current
+    if (ctx.state === 'suspended') ctx.resume()
+    return ctx
+  }
+
   function playBuzzer() {
     try {
-      if (!audioCtx.current) audioCtx.current = new AudioContext()
-      const ctx = audioCtx.current
-      if (ctx.state === 'suspended') ctx.resume()
+      const ctx = getCtx()
+      const now = ctx.currentTime
 
-      // High-priority urgent 3-beep alarm buzzer (Square wave tone)
-      ;[0, 0.25, 0.50].forEach((delay) => {
-        const osc = ctx.createOscillator()
+      // Professional 3-phase alarm: deep tone → rise → alert
+      const beeps = [
+        { freq: 660, start: 0,    dur: 0.18 },
+        { freq: 880, start: 0.22, dur: 0.18 },
+        { freq: 1100, start: 0.44, dur: 0.28 },
+      ]
+
+      beeps.forEach(({ freq, start, dur }) => {
+        const osc  = ctx.createOscillator()
         const gain = ctx.createGain()
-        osc.type = 'sawtooth' // Loud alert buzzer sound
-        osc.frequency.setValueAtTime(880, ctx.currentTime + delay) // A5 frequency
-        
-        const startTime = ctx.currentTime + delay
-        gain.gain.setValueAtTime(0, startTime)
-        gain.gain.linearRampToValueAtTime(0.9, startTime + 0.02)
-        gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.18)
-        
+        const t = now + start
+
+        osc.type = 'square'
+        osc.frequency.setValueAtTime(freq, t)
+
+        gain.gain.setValueAtTime(0, t)
+        gain.gain.linearRampToValueAtTime(0.85, t + 0.02)
+        gain.gain.setValueAtTime(0.85, t + dur - 0.04)
+        gain.gain.linearRampToValueAtTime(0, t + dur)
+
         osc.connect(gain)
         gain.connect(ctx.destination)
-        
-        osc.start(startTime)
-        osc.stop(startTime + 0.20)
+        osc.start(t)
+        osc.stop(t + dur + 0.02)
       })
-    } catch (e) { console.error('Buzzer sound error', e) }
+    } catch (e) { console.error('Buzzer error', e) }
   }
 
   function playChime() {
     try {
-      if (!audioCtx.current) audioCtx.current = new AudioContext()
-      const ctx = audioCtx.current
-      if (ctx.state === 'suspended') ctx.resume()
-      
-      // Warm, professional office chime (C5 -> G5 -> C6)
+      const ctx = getCtx()
+      // Warm office door chime: ascending 4 notes
       const notes = [
-        { freq: 523.25, time: 0, duration: 0.22 },     // C5
-        { freq: 659.25, time: 0.14, duration: 0.22 },   // E5
-        { freq: 783.99, time: 0.28, duration: 0.30 },   // G5
-        { freq: 1046.50, time: 0.45, duration: 0.55 }   // C6
+        { freq: 523.25, time: 0,    dur: 0.30 },  // C5
+        { freq: 659.25, time: 0.18, dur: 0.30 },  // E5
+        { freq: 783.99, time: 0.36, dur: 0.30 },  // G5
+        { freq: 1046.5, time: 0.54, dur: 0.55 },  // C6
       ]
-
-      notes.forEach(({ freq, time, duration }) => {
-        const osc = ctx.createOscillator()
+      notes.forEach(({ freq, time, dur }) => {
+        const osc  = ctx.createOscillator()
         const gain = ctx.createGain()
+        const t = ctx.currentTime + time
         osc.type = 'triangle'
-        osc.frequency.setValueAtTime(freq, ctx.currentTime + time)
-        
-        const startTime = ctx.currentTime + time
-        gain.gain.setValueAtTime(0, startTime)
-        gain.gain.linearRampToValueAtTime(0.7, startTime + 0.03)
-        gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration)
-        
+        osc.frequency.setValueAtTime(freq, t)
+        gain.gain.setValueAtTime(0, t)
+        gain.gain.linearRampToValueAtTime(0.65, t + 0.03)
+        gain.gain.exponentialRampToValueAtTime(0.001, t + dur)
         osc.connect(gain)
         gain.connect(ctx.destination)
-        
-        osc.start(startTime)
-        osc.stop(startTime + duration + 0.05)
+        osc.start(t)
+        osc.stop(t + dur + 0.05)
       })
-    } catch (e) { console.error('Audio error', e) }
+    } catch (e) { console.error('Chime error', e) }
   }
 
   function speak(text) {
     try {
       if (!window.speechSynthesis) return
       window.speechSynthesis.cancel()
-
       const u = new SpeechSynthesisUtterance(text)
-      u.rate = 0.82    // Slow, clear, professional speaking speed
-      u.pitch = 1.0    // Natural professional pitch
+      u.rate   = 0.82
+      u.pitch  = 1.0
       u.volume = 1.0
-
-      // Select highest quality natural English voice available
       const voices = window.speechSynthesis.getVoices()
-      const preferredVoice = voices.find(v => 
-        (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Online') || v.name.includes('Microsoft') || v.name.includes('Jenny') || v.name.includes('Guy') || v.name.includes('Aria') || v.name.includes('Zira')) &&
+      const preferred = voices.find(v =>
+        (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Microsoft') ||
+         v.name.includes('Jenny') || v.name.includes('Aria') || v.name.includes('Zira')) &&
         v.lang.startsWith('en')
       ) || voices.find(v => v.lang.startsWith('en'))
-
-      if (preferredVoice) u.voice = preferredVoice
-
+      if (preferred) u.voice = preferred
       window.speechSynthesis.speak(u)
     } catch (e) { console.error('TTS error', e) }
   }
@@ -211,25 +202,28 @@ export default function EmployeeDashboard() {
           <div className="company">🏢 Whiteng Software</div>
           <div className="tagline">Office Calling System</div>
         </div>
-        <button className="btn-logout" onClick={logout}>
-          🚪 Logout
-        </button>
+        <button className="btn-logout" onClick={logout}>🚪 Logout</button>
       </header>
 
       <div className="emp-body">
         <div className="status-card">
+
+          {/* Profile Photo — perfect square, center-cropped */}
           <div
-            className="welcome-icon emp-avatar"
-            style={{ margin: '0 auto 16px', cursor: 'pointer', position: 'relative' }}
+            className="emp-profile-photo"
             onClick={() => fileInputRef.current?.click()}
             title="Click to change profile photo"
           >
-            {avatar ? (
-              <img src={avatar} alt={empName} />
-            ) : (
-              empName.charAt(0)
-            )}
+            {avatar
+              ? <img src={avatar} alt={empName} />
+              : <span>{empName.charAt(0).toUpperCase()}</span>
+            }
+            <div className="emp-photo-overlay">
+              <span>📷</span>
+            </div>
+            {uploading && <div className="emp-photo-uploading">Uploading…</div>}
           </div>
+
           <input
             type="file"
             ref={fileInputRef}
@@ -237,26 +231,19 @@ export default function EmployeeDashboard() {
             style={{ display: 'none' }}
             onChange={handlePhotoUpload}
           />
+
           <button
+            className="upload-photo-btn"
             onClick={() => fileInputRef.current?.click()}
-            style={{
-              background: 'transparent',
-              border: '1px solid var(--border)',
-              borderRadius: '6px',
-              padding: '4px 10px',
-              fontSize: '.75rem',
-              color: 'var(--primary)',
-              cursor: 'pointer',
-              marginBottom: '16px',
-              fontWeight: '600'
-            }}
           >
-            📷 Upload Profile Photo
+            📷 {avatar ? 'Change Photo' : 'Upload Profile Photo'}
           </button>
+
           <div className="welcome-name">Welcome, {empName}!</div>
           <div className="welcome-sub">You are logged in and ready to receive calls from Sir</div>
+
           <div className="status-display">
-            <div className="big-dot" style={!connected ? { background:'var(--red)', boxShadow:'none', animation:'none' } : {}} />
+            <div className="big-dot" style={!connected ? { background: 'var(--red)', animation: 'none' } : {}} />
             <div className="status-txt" style={{ color: connected ? 'var(--green)' : 'var(--red)' }}>
               {connected ? '🟢 Online' : '🔴 Offline'}
             </div>
@@ -269,7 +256,7 @@ export default function EmployeeDashboard() {
 
       {incomingCall && (
         <div className="modal-overlay">
-          <div className="call-modal" style={incomingCall.isBroadcast ? { borderColor: 'var(--red)', boxShadow: '0 0 50px rgba(220,38,38,.25)' } : {}}>
+          <div className="call-modal" style={incomingCall.isBroadcast ? { borderColor: 'var(--red)' } : {}}>
             <span className="call-bell">{incomingCall.isBroadcast ? '📢' : '🔔'}</span>
             <div className="call-title" style={incomingCall.isBroadcast ? { color: 'var(--red)' } : {}}>
               {incomingCall.isBroadcast ? 'EVERYONE TO CABIN!' : 'Sir is calling you!'}
