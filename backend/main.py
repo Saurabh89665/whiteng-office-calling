@@ -38,11 +38,26 @@ def save_settings(data: dict):
 settings: dict = load_settings()
 
 def get_client_ip(environ) -> str:
-    """Extract client IP address handling proxies (X-Forwarded-For)."""
-    if "HTTP_X_FORWARDED_FOR" in environ:
-        return environ["HTTP_X_FORWARDED_FOR"].split(",")[0].strip()
+    """Extract real client IP address handling reverse proxies and cloud services."""
+    headers_to_check = [
+        "HTTP_CF_CONNECTING_IP",
+        "HTTP_X_REAL_IP",
+        "HTTP_TRUE_CLIENT_IP",
+        "HTTP_X_FORWARDED_FOR"
+    ]
+    for h in headers_to_check:
+        if h in environ and environ[h]:
+            return environ[h].split(",")[0].strip()
+
     if "asgi.scope" in environ:
-        client = environ["asgi.scope"].get("client")
+        scope = environ["asgi.scope"]
+        headers = dict(scope.get("headers", []))
+        for key in [b"cf-connecting-ip", b"x-real-ip", b"true-client-ip", b"x-forwarded-for"]:
+            if key in headers:
+                val = headers[key].decode("latin1", errors="ignore")
+                if val:
+                    return val.split(",")[0].strip()
+        client = scope.get("client")
         if client:
             return client[0]
     return ""

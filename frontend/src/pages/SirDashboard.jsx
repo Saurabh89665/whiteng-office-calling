@@ -14,6 +14,7 @@ export default function SirDashboard() {
   const [callingAll, setCallingAll] = useState(false)
   const [toast, setToast]       = useState(null)
   const [wifiSettings, setWifiSettings] = useState({ allowed_ips: [], your_ip: '' })
+  const [customIp, setCustomIp] = useState('')
 
   // Add employee form
   const [newName, setNewName]   = useState('')
@@ -342,60 +343,83 @@ export default function SirDashboard() {
               <div className="share-desc">
                 {wifiSettings.allowed_ips?.length
                   ? `Only employees connected to this Wi-Fi IP (${wifiSettings.allowed_ips.join(', ')}) can log in.`
-                  : 'Currently, employees can log in from anywhere (home or office). Click below to restrict login strictly to this office Wi-Fi:'}
+                  : 'Restrict login strictly to your company Wi-Fi router. Enter your Wi-Fi IP below or click Use Current IP:'}
               </div>
-              {wifiSettings.your_ip && (
-                <div style={{ fontSize: '.78rem', color: 'var(--text2)', marginBottom: '8px' }}>
-                  Current Wi-Fi IP: <b style={{ color: 'var(--text1)' }}>{wifiSettings.your_ip}</b>
-                </div>
-              )}
-              <div style={{ display: 'flex', gap: '8px' }}>
+
+              {/* IP Input & Set buttons */}
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                <input
+                  className="share-input"
+                  placeholder="Enter Office IP (e.g. 103.156.19.42)"
+                  value={customIp}
+                  onChange={e => setCustomIp(e.target.value)}
+                />
                 <button
                   style={{
-                    flex: 1,
-                    padding: '8px 12px',
-                    background: wifiSettings.allowed_ips?.length ? '#ffffff' : 'var(--primary)',
-                    color: wifiSettings.allowed_ips?.length ? 'var(--text1)' : '#ffffff',
-                    border: '1.5px solid var(--border)',
+                    padding: '8px 14px',
+                    background: 'var(--primary)',
+                    color: '#ffffff',
+                    border: 'none',
                     borderRadius: '8px',
-                    fontSize: '.78rem',
+                    fontSize: '.82rem',
                     fontWeight: '700',
                     cursor: 'pointer'
                   }}
                   onClick={() => {
-                    if (!wifiSettings.your_ip) {
-                      showToast('Could not detect your current Wi-Fi IP.', 'error')
+                    const targetIp = (customIp || wifiSettings.your_ip || '').trim()
+                    if (!targetIp) {
+                      showToast('Please enter your Wi-Fi IP or check connection.', 'error')
                       return
                     }
-                    socket.emit('update_office_wifi', { token, allowed_ips: [wifiSettings.your_ip] }, (res) => {
-                      if (res.success) showToast('🔒 Login restricted strictly to company Wi-Fi!', 'success')
+                    socket.emit('update_office_wifi', { token, allowed_ips: [targetIp] }, (res) => {
+                      if (res.success) {
+                        showToast(`🔒 Wi-Fi locked to: ${targetIp}`, 'success')
+                        setCustomIp('')
+                      } else {
+                        showToast(res.error || 'Failed to update Wi-Fi.', 'error')
+                      }
                     })
                   }}
                 >
-                  📡 Set Current Wi-Fi as Office Wi-Fi
+                  Save IP
                 </button>
-                {wifiSettings.allowed_ips?.length > 0 && (
-                  <button
-                    style={{
-                      padding: '8px 12px',
-                      background: '#ffffff',
-                      color: 'var(--red)',
-                      border: '1.5px solid #fca5a5',
-                      borderRadius: '8px',
-                      fontSize: '.78rem',
-                      fontWeight: '700',
-                      cursor: 'pointer'
-                    }}
-                    onClick={() => {
-                      socket.emit('update_office_wifi', { token, allowed_ips: [] }, (res) => {
-                        if (res.success) showToast('🔓 Wi-Fi restriction removed (login allowed from anywhere).', 'info')
-                      })
-                    }}
-                  >
-                    Allow Anywhere
-                  </button>
-                )}
               </div>
+
+              {wifiSettings.your_ip && (
+                <div style={{ fontSize: '.76rem', color: 'var(--text2)', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span>Detected IP: <b style={{ color: 'var(--text1)' }}>{wifiSettings.your_ip}</b></span>
+                  <button
+                    style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: '.76rem', fontWeight: '700', cursor: 'pointer', textDecoration: 'underline' }}
+                    onClick={() => setCustomIp(wifiSettings.your_ip)}
+                  >
+                    Insert Detected IP
+                  </button>
+                </div>
+              )}
+
+              {wifiSettings.allowed_ips?.length > 0 && (
+                <button
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    background: '#ffffff',
+                    color: 'var(--red)',
+                    border: '1.5px solid #fca5a5',
+                    borderRadius: '8px',
+                    fontSize: '.78rem',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    marginTop: '4px'
+                  }}
+                  onClick={() => {
+                    socket.emit('update_office_wifi', { token, allowed_ips: [] }, (res) => {
+                      if (res.success) showToast('🔓 Wi-Fi restriction removed (login allowed from anywhere).', 'info')
+                    })
+                  }}
+                >
+                  🔓 Remove Restriction (Allow Anywhere)
+                </button>
+              )}
             </div>
 
             <p className="form-note">
