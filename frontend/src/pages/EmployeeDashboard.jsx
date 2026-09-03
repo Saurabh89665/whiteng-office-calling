@@ -72,17 +72,23 @@ export default function EmployeeDashboard() {
       doReconnect()
     }
 
-    // 15-second heartbeat to ensure Admin always sees Online status
-    const heartbeatTimer = setInterval(() => {
+    // Active watchdog every 4 seconds: keep socket connected & auto-refresh Online status
+    const watchdogTimer = setInterval(() => {
       const name = sessionStorage.getItem('empName') || localStorage.getItem('empName') || activeName
       const id   = sessionStorage.getItem('empId')   || localStorage.getItem('empId')   || activeId
-      if (socket.connected && name && name !== 'Employee') {
+      const tok  = sessionStorage.getItem('token')   || localStorage.getItem('token')   || activeToken
+
+      if (!name || name === 'Employee') return
+
+      if (!socket.connected) {
+        socket.connect()
+      } else {
         socket.emit('heartbeat', { employeeId: id, employeeName: name })
       }
-    }, 15000)
+    }, 4000)
 
     return () => {
-      clearInterval(heartbeatTimer)
+      clearInterval(watchdogTimer)
       window.removeEventListener('online', handleOnline)
       socket.off('connect', onConnect)
       socket.off('disconnect', onDisconnect)

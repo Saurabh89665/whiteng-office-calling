@@ -211,9 +211,11 @@ function loadAppContent(serverReady) {
   }
 }
 
+let lastAllowedState = null;
+
 function startWifiMonitor() {
   if (wifiCheckTimer) clearInterval(wifiCheckTimer);
-  // Ultra-fast radar scan every 2 seconds
+  // Scan Wi-Fi radar every 2 seconds
   wifiCheckTimer = setInterval(() => {
     if (!mainWindow) return;
     const wifiStatus = checkWifiAccess();
@@ -222,9 +224,11 @@ function startWifiMonitor() {
 
     if (!wifiStatus.allowed && !isRestrictedPage) {
       loadAppContent(true);
-    } else if (wifiStatus.allowed && isRestrictedPage) {
+    } else if (wifiStatus.allowed && (isRestrictedPage || lastAllowedState === false)) {
+      console.log('[Desktop] Office Wi-Fi detected:', wifiStatus.ssid);
       mainWindow.loadURL(SERVER);
     }
+    lastAllowedState = wifiStatus.allowed;
   }, 2000);
 }
 
