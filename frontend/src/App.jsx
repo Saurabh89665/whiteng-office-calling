@@ -23,12 +23,14 @@ function restoreSession() {
 restoreSession()
 
 function RequireSir({ children }) {
-  const ok = sessionStorage.getItem('token') && sessionStorage.getItem('role') === 'sir'
+  const ok = (sessionStorage.getItem('token') || localStorage.getItem('token')) &&
+             (sessionStorage.getItem('role') === 'sir' || localStorage.getItem('role') === 'sir')
   return ok ? children : <Navigate to="/" replace />
 }
 
 function RequireEmployee({ children }) {
-  const ok = sessionStorage.getItem('token') && sessionStorage.getItem('role') === 'employee'
+  const ok = (sessionStorage.getItem('token') || localStorage.getItem('token')) &&
+             (sessionStorage.getItem('role') === 'employee' || localStorage.getItem('role') === 'employee')
   return ok ? children : <Navigate to="/" replace />
 }
 
@@ -45,9 +47,9 @@ export default function App() {
   )
 }
 
-// Auto-redirect to dashboard if already logged in
+// Auto-redirect to dashboard if already logged in permanently
 function AutoRedirect() {
-  const role = sessionStorage.getItem('role')
+  const role = sessionStorage.getItem('role') || localStorage.getItem('role')
   if (role === 'employee') return <Navigate to="/employee" replace />
   if (role === 'sir')      return <Navigate to="/sir" replace />
   return <Login />

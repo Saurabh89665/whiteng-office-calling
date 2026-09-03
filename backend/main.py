@@ -390,18 +390,30 @@ async def employee_login(sid, data):
 
 @sio.event
 async def employee_reconnect(sid, data):
-    emp_id   = data.get("employeeId")
-    emp_name = data.get("employeeName")
-    emp = next((e for e in employees if (emp_id and e["id"] == emp_id) or (emp_name and e["name"] == emp_name)), None)
+    emp_id   = (data.get("employeeId") or "").strip()
+    emp_name = (data.get("employeeName") or "").strip()
+
+    # Match by ID or Name (case-insensitive)
+    emp = next((e for e in employees if (emp_id and e.get("id", "").lower() == emp_id.lower()) or (emp_name and e.get("name", "").lower() == emp_name.lower())), None)
+
+    if not emp and emp_name and emp_name.lower() != "employee":
+        # Auto-heal: maintain employee record even if Render cloud resets ephemeral storage
+        actual_id = emp_id or f"EMP{str(len(employees) + 1).zfill(3)}"
+        emp = {"id": actual_id, "name": emp_name, "passwordHash": hash_pw("1234")}
+        employees.append(emp)
+        save_employees(employees)
+        log(f"Auto-restored employee record on permanent reconnect: {emp_name} ({actual_id})")
+
     if not emp:
         return {"success": False}
+
     actual_id   = emp["id"]
     actual_name = emp["name"]
     t = data.get("token") or new_token()
     sessions[t] = {"role": "employee", "name": actual_name, "id": actual_id, "sid": sid}
     await sio.save_session(sid, {"token": t, "role": "employee", "employeeId": actual_id, "employeeName": actual_name})
     online_employees[actual_id] = {"id": actual_id, "name": actual_name, "sid": sid}
-    log(f"Employee reconnected: {actual_name}")
+    log(f"Employee permanently reconnected: {actual_name}")
     await broadcast_sir("employees_status", employee_status())
     return {"success": True, "token": t, "avatar": emp.get("avatar", "")}
 

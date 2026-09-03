@@ -7,9 +7,9 @@ export default function EmployeeDashboard() {
   const [incomingCall, setIncomingCall] = useState(null)
   const [avatar, setAvatar]             = useState(sessionStorage.getItem('empAvatar') || '')
   const [uploading, setUploading]       = useState(false)
-  const token   = sessionStorage.getItem('token')
-  const empName = sessionStorage.getItem('empName') || 'Employee'
-  const empId   = sessionStorage.getItem('empId')
+  const token   = sessionStorage.getItem('token')   || localStorage.getItem('token')
+  const empName = sessionStorage.getItem('empName') || localStorage.getItem('empName') || 'Employee'
+  const empId   = sessionStorage.getItem('empId')   || localStorage.getItem('empId')
   const audioCtx = useRef(null)
   const fileInputRef = useRef(null)
   const navigate = useNavigate()
@@ -17,11 +17,14 @@ export default function EmployeeDashboard() {
   useEffect(() => {
     document.title = `${empName} — Whiteng Software`
     const doReconnect = () => {
+      if (!empName || empName === 'Employee') return
       socket.emit('employee_reconnect', { token, employeeId: empId, employeeName: empName }, (res) => {
-        if (res && !res.success) navigate('/')
-        else if (res && res.avatar) {
-          setAvatar(res.avatar)
-          sessionStorage.setItem('empAvatar', res.avatar)
+        if (res && res.success) {
+          if (res.avatar) {
+            setAvatar(res.avatar)
+            sessionStorage.setItem('empAvatar', res.avatar)
+            localStorage.setItem('empAvatar', res.avatar)
+          }
         }
       })
     }
