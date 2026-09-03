@@ -83,6 +83,23 @@ export default function EmployeeDashboard() {
 
   function handleCall(data) {
     setIncomingCall(data)
+    document.title = `🚨 SIR IS CALLING — Whiteng Software`
+
+    // Native desktop notification if supported
+    try {
+      if (window.Notification) {
+        if (Notification.permission === 'granted') {
+          new Notification(data.isBroadcast ? '📢 EVERYONE TO CABIN!' : `🔔 Sir is calling ${data.employeeName}!`, {
+            body: 'Please report to the cabin immediately — Whiteng Software',
+            requireInteraction: true,
+            icon: '/icon-192.png'
+          })
+        } else if (Notification.permission !== 'denied') {
+          Notification.requestPermission()
+        }
+      }
+    } catch {}
+
     if (data.isBroadcast) {
       playBuzzer()
     } else {
@@ -96,6 +113,7 @@ export default function EmployeeDashboard() {
     if (!incomingCall) return
     socket.emit('acknowledge_call', { callId: incomingCall.callId, employeeName: incomingCall.employeeName })
     setIncomingCall(null)
+    document.title = `${empName} — Whiteng Software`
   }
 
   function logout() {

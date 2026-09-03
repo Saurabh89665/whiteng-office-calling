@@ -1,14 +1,21 @@
 'use strict';
 /**
  * Whiteng Software — Office Calling System
- * Electron Desktop Wrapper with Office Wi-Fi Verification
+ * Electron Desktop Wrapper with Always-On Background Radar & Wi-Fi Verification
  */
 
-const { app, BrowserWindow, Menu, Tray, shell, ipcMain } = require('electron');
+const { app, BrowserWindow, Menu, Tray, shell, powerSaveBlocker, ipcMain } = require('electron');
 const path = require('path');
 const fs   = require('fs');
 const https = require('https');
 const { execSync } = require('child_process');
+
+// ── Prevent Windows from sleeping/suspending background connection ──
+try {
+  powerSaveBlocker.start('prevent-app-suspension');
+} catch (e) {
+  console.log('[Desktop] PowerSaveBlocker error:', e.message);
+}
 
 // ── Load config ─────────────────────────────────
 function loadConfig() {
@@ -27,27 +34,27 @@ function loadConfig() {
   };
 }
 
-const config      = loadConfig();
-const SERVER      = config.serverUrl || 'https://whiteng-office-calling.onrender.com';
+const config       = loadConfig();
+const SERVER       = config.serverUrl || 'https://whiteng-office-calling.onrender.com';
 const ALLOWED_WIFI = config.allowedWifi || ['whiteng', 'whiteng2'];
 
-let mainWindow   = null;
-let tray         = null;
-let isQuitting   = false;
+let mainWindow     = null;
+let tray           = null;
+let isQuitting     = false;
 let wifiCheckTimer = null;
 
 // ── Check Current Connected Wi-Fi Name (SSID) ───
 function getConnectedWifiSSID() {
   try {
     if (process.platform === 'win32') {
-      const output = execSync('netsh wlan show interfaces', { encoding: 'utf8', timeout: 4000 });
+      const output = execSync('netsh wlan show interfaces', { encoding: 'utf8', timeout: 3000 });
       const match = output.match(/^\s*SSID\s*:\s*(.+)$/m);
       if (match && match[1]) {
         return match[1].trim();
       }
     }
   } catch (err) {
-    console.log('[Desktop] Wi-Fi check info:', err.message);
+    // Non-fatal, e.g. ethernet or scanning
   }
   return null;
 }
@@ -56,7 +63,7 @@ function checkWifiAccess() {
   if (!ALLOWED_WIFI || ALLOWED_WIFI.length === 0) return { allowed: true, ssid: null };
   const currentSSID = getConnectedWifiSSID();
   
-  // If no Wi-Fi interface detected (e.g. Ethernet cable), allow access
+  // If Ethernet cable or no Wi-Fi card, allow
   if (!currentSSID) return { allowed: true, ssid: 'LAN/Ethernet' };
 
   const isMatched = ALLOWED_WIFI.some(
@@ -106,6 +113,7 @@ function createWindow(serverReady) {
       nodeIntegration: false,
       contextIsolation: true,
       webSecurity: false,
+      backgroundThrottling: false, // CRITICAL: NEVER pause timers/WebSockets when minimized or screen off!
     },
   });
 
@@ -118,10 +126,36 @@ function createWindow(serverReady) {
     mainWindow.focus();
   });
 
-  // Minimize to tray instead of closing
-  mainWindow.on('close', (e) => {
-    if (!isQuitting) { e.preventDefault(); mainWindow.hide(); }
+  // Wakeup & Pop-up window when Sir calls
+  mainWindow.on('page-title-updated', (evt, title) => {
+    if (title && (title.includes('SIR IS CALLING') || title.includes('🚨') || title.includes('EVERYONE'))) {
+      if (mainWindow) {
+        mainWindow.show();
+        mainWindow.restore();
+        mainWindow.focus();
+        mainWindow.flashFrame(true);
+        mainWindow.setAlwaysOnTop(true, 'screen-saver');
+        setTimeout(() => {
+          if (mainWindow) mainWindow.setAlwaysOnTop(false);
+        }, 4000);
+      }
+    }
   });
+
+  // Minimize to tray instead of closing on X button
+  mainWindow.on('close', (e) => {
+    if (!isQuitting) {
+      e.preventDefault();
+      mainWindow.hide();
+      if (tray) {
+        tray.displayBalloon?.({
+          title: 'Whiteng Office Calling',
+          content: 'App is running in background. You will receive calls here!'
+        });
+      }
+    }
+  });
+
   mainWindow.on('closed', () => { mainWindow = null; });
 
   // Open external links in real browser
@@ -130,7 +164,7 @@ function createWindow(serverReady) {
     return { action: 'deny' };
   });
 
-  // Background monitor: periodically verify Wi-Fi connection
+  // Background radar: constantly monitor Wi-Fi radar in background
   startWifiMonitor();
 }
 
@@ -179,6 +213,7 @@ function loadAppContent(serverReady) {
 
 function startWifiMonitor() {
   if (wifiCheckTimer) clearInterval(wifiCheckTimer);
+  // Fast radar scan every 5 seconds
   wifiCheckTimer = setInterval(() => {
     if (!mainWindow) return;
     const wifiStatus = checkWifiAccess();
@@ -190,7 +225,7 @@ function startWifiMonitor() {
     } else if (wifiStatus.allowed && isRestrictedPage) {
       mainWindow.loadURL(SERVER);
     }
-  }, 10000);
+  }, 5000);
 }
 
 // ── System tray ─────────────────────────────────
@@ -199,12 +234,13 @@ function createTray() {
   if (!fs.existsSync(iconPath)) return;
   try {
     tray = new Tray(iconPath);
-    tray.setToolTip('Whiteng Software — Office Calling');
+    tray.setToolTip('Whiteng Software — Office Calling (Running in Background)');
     tray.setContextMenu(Menu.buildFromTemplate([
       { label: 'Open App',     click: () => { mainWindow?.show(); mainWindow?.focus(); } },
+      { label: 'Status: 🟢 Always Active in Background', enabled: false },
       { label: 'Office Wi-Fi: ' + ALLOWED_WIFI.join(', '), enabled: false },
       { type: 'separator' },
-      { label: 'Quit',         click: () => { isQuitting = true; app.quit(); } },
+      { label: 'Quit App',     click: () => { isQuitting = true; app.quit(); } },
     ]));
     tray.on('double-click', () => { mainWindow?.show(); mainWindow?.focus(); });
   } catch (e) { console.error('Tray error:', e.message); }
