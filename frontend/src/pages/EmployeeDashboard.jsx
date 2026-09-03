@@ -16,10 +16,16 @@ export default function EmployeeDashboard() {
 
   useEffect(() => {
     document.title = `${empName} — Whiteng Software`
+
     const doReconnect = () => {
-      if (!empName || empName === 'Employee') return
-      socket.emit('employee_reconnect', { token, employeeId: empId, employeeName: empName }, (res) => {
+      const activeName = sessionStorage.getItem('empName') || localStorage.getItem('empName')
+      const activeId   = sessionStorage.getItem('empId')   || localStorage.getItem('empId')
+      const activeToken = sessionStorage.getItem('token')  || localStorage.getItem('token')
+      if (!activeName || activeName === 'Employee') return
+
+      socket.emit('employee_reconnect', { token: activeToken, employeeId: activeId, employeeName: activeName }, (res) => {
         if (res && res.success) {
+          setConnected(true)
           if (res.avatar) {
             setAvatar(res.avatar)
             sessionStorage.setItem('empAvatar', res.avatar)
@@ -28,24 +34,45 @@ export default function EmployeeDashboard() {
         }
       })
     }
-    if (!socket.connected) { socket.connect(); socket.once('connect', doReconnect) }
-    else doReconnect()
 
-    socket.on('incoming_call', handleCall)
-    const handleOnline = () => {
+    const onConnect = () => {
       setConnected(true)
-      if (!socket.connected) socket.connect()
       doReconnect()
+    }
+    const onDisconnect = () => {
+      setConnected(false)
+    }
+
+    socket.on('connect', onConnect)
+    socket.on('disconnect', onDisconnect)
+    socket.on('reconnect', onConnect)
+    socket.on('incoming_call', handleCall)
+    socket.on('kicked', () => {
+      localStorage.clear()
+      sessionStorage.clear()
+      alert('Your account was removed by admin.')
+      navigate('/')
+    })
+
+    const handleOnline = () => {
+      if (!socket.connected) socket.connect()
+      else doReconnect()
     }
     window.addEventListener('online', handleOnline)
 
+    if (!socket.connected) {
+      socket.connect()
+    } else {
+      doReconnect()
+    }
+
     return () => {
       window.removeEventListener('online', handleOnline)
+      socket.off('connect', onConnect)
+      socket.off('disconnect', onDisconnect)
+      socket.off('reconnect', onConnect)
       socket.off('incoming_call', handleCall)
       socket.off('kicked')
-      socket.off('connect')
-      socket.off('disconnect')
-      socket.off('reconnect')
     }
   }, [])
 
