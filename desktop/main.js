@@ -135,6 +135,17 @@ function createTray() {
 // ── App lifecycle ───────────────────────────────
 app.whenReady().then(() => {
   console.log('[Desktop] Connecting to server:', SERVER);
+
+  // Auto-launch on Windows startup so employee is automatically online when PC turns on
+  try {
+    app.setLoginItemSettings({
+      openAtLogin: true,
+      openAsHidden: false
+    });
+  } catch (err) {
+    console.log('[Desktop] Could not set auto-start:', err.message);
+  }
+
   waitForServer(20, (ready) => {
     createWindow(ready);
     createTray();
