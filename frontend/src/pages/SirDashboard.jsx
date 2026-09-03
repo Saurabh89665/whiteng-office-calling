@@ -170,7 +170,13 @@ export default function SirDashboard() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div className="admin-badge-header">👔 Sir — Admin</div>
-          <button className="btn-logout" onClick={() => { sessionStorage.clear(); socket.disconnect(); navigate('/'); }}>
+          <button className="btn-logout" onClick={() => {
+            sessionStorage.clear();
+            localStorage.removeItem('token');
+            localStorage.removeItem('role');
+            socket.disconnect();
+            navigate('/');
+          }}>
             🚪 Logout
           </button>
         </div>

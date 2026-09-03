@@ -74,6 +74,8 @@ export default function Login() {
         if (res.success) {
           sessionStorage.setItem('token', res.token)
           sessionStorage.setItem('role', 'sir')
+          localStorage.setItem('token', res.token)
+          localStorage.setItem('role', 'sir')
           navigate('/sir')
         } else {
           setMsg({ text: res.error || 'Login failed.', type: 'error' })
