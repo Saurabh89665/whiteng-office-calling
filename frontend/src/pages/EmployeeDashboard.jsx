@@ -15,15 +15,19 @@ export default function EmployeeDashboard() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    document.title = `${empName} — Whiteng Software`
+    const activeName = sessionStorage.getItem('empName') || localStorage.getItem('empName') || empName
+    const activeId   = sessionStorage.getItem('empId')   || localStorage.getItem('empId')   || empId
+    const activeToken = sessionStorage.getItem('token')  || localStorage.getItem('token')  || token
+
+    document.title = `${activeName} — Whiteng Software`
 
     const doReconnect = () => {
-      const activeName = sessionStorage.getItem('empName') || localStorage.getItem('empName')
-      const activeId   = sessionStorage.getItem('empId')   || localStorage.getItem('empId')
-      const activeToken = sessionStorage.getItem('token')  || localStorage.getItem('token')
-      if (!activeName || activeName === 'Employee') return
+      const name = sessionStorage.getItem('empName') || localStorage.getItem('empName') || activeName
+      const id   = sessionStorage.getItem('empId')   || localStorage.getItem('empId')   || activeId
+      const tok  = sessionStorage.getItem('token')   || localStorage.getItem('token')   || activeToken
+      if (!name || name === 'Employee') return
 
-      socket.emit('employee_reconnect', { token: activeToken, employeeId: activeId, employeeName: activeName }, (res) => {
+      socket.emit('employee_reconnect', { token: tok, employeeId: id, employeeName: name }, (res) => {
         if (res && res.success) {
           setConnected(true)
           if (res.avatar) {
@@ -55,18 +59,30 @@ export default function EmployeeDashboard() {
     })
 
     const handleOnline = () => {
+      setConnected(true)
       if (!socket.connected) socket.connect()
       else doReconnect()
     }
     window.addEventListener('online', handleOnline)
 
+    // Connect immediately
     if (!socket.connected) {
       socket.connect()
     } else {
       doReconnect()
     }
 
+    // 15-second heartbeat to ensure Admin always sees Online status
+    const heartbeatTimer = setInterval(() => {
+      const name = sessionStorage.getItem('empName') || localStorage.getItem('empName') || activeName
+      const id   = sessionStorage.getItem('empId')   || localStorage.getItem('empId')   || activeId
+      if (socket.connected && name && name !== 'Employee') {
+        socket.emit('heartbeat', { employeeId: id, employeeName: name })
+      }
+    }, 15000)
+
     return () => {
+      clearInterval(heartbeatTimer)
       window.removeEventListener('online', handleOnline)
       socket.off('connect', onConnect)
       socket.off('disconnect', onDisconnect)

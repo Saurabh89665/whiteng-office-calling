@@ -364,29 +364,25 @@ async def update_avatar(sid, data):
 # ── Employee login (with password) ──────────────────
 @sio.event
 async def employee_login(sid, data):
-    environ = sio.environ.get(sid, {})
-    client_ip = get_client_ip(environ)
-    if not is_ip_allowed(client_ip):
-        log(f"Employee login BLOCKED for IP {client_ip} (not on company Wi-Fi)")
-        return {"success": False, "error": "Login restricted! You must be connected to company Wi-Fi."}
-
     emp_id   = data.get("employeeId")
     emp_name = data.get("employeeName")
     password = (data.get("password") or "").strip()
 
-    emp = next((e for e in employees if e["id"] == emp_id and e["name"] == emp_name), None)
+    emp = next((e for e in employees if (emp_id and e["id"] == emp_id) or (emp_name and e["name"].lower() == emp_name.lower())), None)
     if not emp:
         return {"success": False, "error": "Employee not found."}
     if emp.get("passwordHash") and emp["passwordHash"] != hash_pw(password):
         return {"success": False, "error": "Incorrect password."}
 
+    actual_id   = emp["id"]
+    actual_name = emp["name"]
     t = new_token()
-    sessions[t] = {"role": "employee", "name": emp_name, "id": emp_id, "sid": sid}
-    await sio.save_session(sid, {"token": t, "role": "employee", "employeeId": emp_id, "employeeName": emp_name})
-    online_employees[emp_id] = {"id": emp_id, "name": emp_name, "sid": sid}
-    log(f"Employee logged in: {emp_name} (from IP {client_ip})")
+    sessions[t] = {"role": "employee", "name": actual_name, "id": actual_id, "sid": sid}
+    await sio.save_session(sid, {"token": t, "role": "employee", "employeeId": actual_id, "employeeName": actual_name})
+    online_employees[actual_id] = {"id": actual_id, "name": actual_name, "sid": sid}
+    log(f"Employee logged in: {actual_name} ({actual_id})")
     await broadcast_sir("employees_status", employee_status())
-    return {"success": True, "token": t}
+    return {"success": True, "token": t, "employeeId": actual_id, "employeeName": actual_name, "avatar": emp.get("avatar", "")}
 
 @sio.event
 async def employee_reconnect(sid, data):
@@ -413,9 +409,18 @@ async def employee_reconnect(sid, data):
     sessions[t] = {"role": "employee", "name": actual_name, "id": actual_id, "sid": sid}
     await sio.save_session(sid, {"token": t, "role": "employee", "employeeId": actual_id, "employeeName": actual_name})
     online_employees[actual_id] = {"id": actual_id, "name": actual_name, "sid": sid}
-    log(f"Employee permanently reconnected: {actual_name}")
+    log(f"Employee permanently reconnected: {actual_name} ({actual_id})")
     await broadcast_sir("employees_status", employee_status())
     return {"success": True, "token": t, "avatar": emp.get("avatar", "")}
+
+@sio.event
+async def heartbeat(sid, data):
+    emp_id   = (data.get("employeeId") or "").strip()
+    emp_name = (data.get("employeeName") or "").strip()
+    if emp_id and emp_name:
+        if emp_id not in online_employees or online_employees[emp_id].get("sid") != sid:
+            online_employees[emp_id] = {"id": emp_id, "name": emp_name, "sid": sid}
+            await broadcast_sir("employees_status", employee_status())
 
 # ── Sir calls employee ───────────────────────────────
 @sio.event
