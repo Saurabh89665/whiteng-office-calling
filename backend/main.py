@@ -62,15 +62,51 @@ def get_client_ip(environ) -> str:
             return client[0]
     return ""
 
+import ipaddress
+
 def is_ip_allowed(client_ip: str) -> bool:
-    """Check if the client IP is allowed. Returns True if no IPs configured or matches allowed list."""
+    """Check if the client IP is allowed. Supports exact match, wildcards (e.g. 106.213.*), and CIDR ranges (e.g. 106.213.0.0/16)."""
+    if not client_ip:
+        return True
+        
     allowed_list = [ip.strip() for ip in settings.get("allowed_ips", []) if ip.strip()]
     if not allowed_list:
         if ALLOWED_OFFICE_IPS:
             allowed_list = [ip.strip() for ip in ALLOWED_OFFICE_IPS.split(",") if ip.strip()]
     if not allowed_list:
         return True
-    return client_ip in allowed_list
+
+    clean_client = client_ip.strip()
+
+    for pattern in allowed_list:
+        # 1. Exact match
+        if pattern == clean_client:
+            return True
+
+        # 2. Wildcard prefix (e.g. "106.213.*" or "106.213.")
+        if "*" in pattern:
+            prefix = pattern.replace("*", "").rstrip(".")
+            if clean_client.startswith(prefix):
+                return True
+        elif pattern.endswith("."):
+            if clean_client.startswith(pattern):
+                return True
+
+        # 3. CIDR / Subnet matching (e.g. "106.213.0.0/16" or "106.213.87.0/24")
+        if "/" in pattern:
+            try:
+                net = ipaddress.ip_network(pattern, strict=False)
+                addr = ipaddress.ip_address(clean_client)
+                if addr in net:
+                    return True
+            except Exception:
+                pass
+
+        # 4. Prefix match for partial string
+        if clean_client.startswith(pattern):
+            return True
+
+    return False
 
 # ── Employee data (load from JSON, save on changes) ─
 EMP_FILE = BASE_DIR / "employees.json"
