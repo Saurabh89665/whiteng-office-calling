@@ -1,5 +1,6 @@
 {
   "serverUrl": "https://whiteng-office-calling.onrender.com",
   "appName": "Whiteng Software — Office Calling System",
-  "version": "1.0.0"
+  "version": "1.0.0",
+  "allowedWifi": ["whiteng", "whiteng2"]
 }
