@@ -13,8 +13,6 @@ export default function SirDashboard() {
   const [calling, setCalling]   = useState({})
   const [callingAll, setCallingAll] = useState(false)
   const [toast, setToast]       = useState(null)
-  const [wifiSettings, setWifiSettings] = useState({ allowed_ips: [], your_ip: '' })
-  const [customIp, setCustomIp] = useState('')
 
   // Add employee form
   const [newName, setNewName]   = useState('')
@@ -44,7 +42,6 @@ export default function SirDashboard() {
 
     socket.on('employees_status', setEmployees)
     socket.on('employees_list',   setEmpList)
-    socket.on('office_wifi_status', setWifiSettings)
     socket.on('call_acknowledged', handleAck)
     socket.on('connect',    () => setConnected(true))
     socket.on('disconnect', () => setConnected(false))
@@ -52,7 +49,6 @@ export default function SirDashboard() {
     return () => {
       socket.off('employees_status', setEmployees)
       socket.off('employees_list',   setEmpList)
-      socket.off('office_wifi_status', setWifiSettings)
       socket.off('call_acknowledged', handleAck)
       socket.off('connect')
       socket.off('disconnect')
@@ -323,103 +319,6 @@ export default function SirDashboard() {
                 <input className="share-input" readOnly value={appUrl} />
                 <button className="share-copy-btn" onClick={copyLink}>Copy</button>
               </div>
-            </div>
-
-            {/* Office Wi-Fi Security Box */}
-            <div className="share-box" style={{ borderColor: wifiSettings.allowed_ips?.length ? 'var(--green)' : 'var(--border)' }}>
-              <div className="share-title">
-                📶 Company Wi-Fi Protection
-                <span style={{
-                  fontSize: '.72rem',
-                  padding: '2px 8px',
-                  borderRadius: '99px',
-                  background: wifiSettings.allowed_ips?.length ? 'var(--green-bg)' : '#f1f5f9',
-                  color: wifiSettings.allowed_ips?.length ? 'var(--green)' : 'var(--text3)',
-                  marginLeft: 'auto'
-                }}>
-                  {wifiSettings.allowed_ips?.length ? '🔒 Active' : '🔓 Off (Anywhere)'}
-                </span>
-              </div>
-              <div className="share-desc">
-                {wifiSettings.allowed_ips?.length
-                  ? `Only employees connected to this Wi-Fi IP (${wifiSettings.allowed_ips.join(', ')}) can log in.`
-                  : 'Restrict login strictly to your company Wi-Fi router. Enter your Wi-Fi IP below or click Use Current IP:'}
-              </div>
-
-              {/* IP Input & Set buttons */}
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-                <input
-                  className="share-input"
-                  placeholder="Enter Office IP (e.g. 103.156.19.42)"
-                  value={customIp}
-                  onChange={e => setCustomIp(e.target.value)}
-                />
-                <button
-                  style={{
-                    padding: '8px 14px',
-                    background: 'var(--primary)',
-                    color: '#ffffff',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '.82rem',
-                    fontWeight: '700',
-                    cursor: 'pointer'
-                  }}
-                  onClick={() => {
-                    const targetIp = (customIp || wifiSettings.your_ip || '').trim()
-                    if (!targetIp) {
-                      showToast('Please enter your Wi-Fi IP or check connection.', 'error')
-                      return
-                    }
-                    socket.emit('update_office_wifi', { token, allowed_ips: [targetIp] }, (res) => {
-                      if (res.success) {
-                        showToast(`🔒 Wi-Fi locked to: ${targetIp}`, 'success')
-                        setCustomIp('')
-                      } else {
-                        showToast(res.error || 'Failed to update Wi-Fi.', 'error')
-                      }
-                    })
-                  }}
-                >
-                  Save IP
-                </button>
-              </div>
-
-              {wifiSettings.your_ip && (
-                <div style={{ fontSize: '.76rem', color: 'var(--text2)', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span>Detected IP: <b style={{ color: 'var(--text1)' }}>{wifiSettings.your_ip}</b></span>
-                  <button
-                    style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: '.76rem', fontWeight: '700', cursor: 'pointer', textDecoration: 'underline' }}
-                    onClick={() => setCustomIp(wifiSettings.your_ip)}
-                  >
-                    Insert Detected IP
-                  </button>
-                </div>
-              )}
-
-              {wifiSettings.allowed_ips?.length > 0 && (
-                <button
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    background: '#ffffff',
-                    color: 'var(--red)',
-                    border: '1.5px solid #fca5a5',
-                    borderRadius: '8px',
-                    fontSize: '.78rem',
-                    fontWeight: '700',
-                    cursor: 'pointer',
-                    marginTop: '4px'
-                  }}
-                  onClick={() => {
-                    socket.emit('update_office_wifi', { token, allowed_ips: [] }, (res) => {
-                      if (res.success) showToast('🔓 Wi-Fi restriction removed (login allowed from anywhere).', 'info')
-                    })
-                  }}
-                >
-                  🔓 Remove Restriction (Allow Anywhere)
-                </button>
-              )}
             </div>
 
             <p className="form-note">
