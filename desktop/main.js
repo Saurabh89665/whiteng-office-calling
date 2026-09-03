@@ -1,10 +1,10 @@
 'use strict';
 /**
  * Whiteng Software — Office Calling System
- * Electron Desktop Wrapper with Always-On Background Radar & Wi-Fi Verification
+ * Electron Desktop Wrapper with Always-On Background Execution & Wi-Fi Verification
  */
 
-const { app, BrowserWindow, Menu, Tray, shell, powerSaveBlocker, ipcMain } = require('electron');
+const { app, BrowserWindow, Menu, Tray, shell, powerSaveBlocker, nativeImage, ipcMain } = require('electron');
 const path = require('path');
 const fs   = require('fs');
 const https = require('https');
@@ -42,6 +42,25 @@ let mainWindow     = null;
 let tray           = null;
 let isQuitting     = false;
 let wifiCheckTimer = null;
+let lastAllowedState = null;
+
+// ── App Icon ────────────────────────────────────
+function getAppIcon() {
+  const possiblePaths = [
+    path.join(__dirname, 'assets', 'icon.png'),
+    path.join(process.resourcesPath || '', 'assets', 'icon.png'),
+    path.join(app.getAppPath(), 'assets', 'icon.png')
+  ];
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) {
+      try {
+        const img = nativeImage.createFromPath(p);
+        if (!img.isEmpty()) return img;
+      } catch {}
+    }
+  }
+  return null;
+}
 
 // ── Check Current Connected Wi-Fi Name (SSID) ───
 function getConnectedWifiSSID() {
@@ -53,9 +72,7 @@ function getConnectedWifiSSID() {
         return match[1].trim();
       }
     }
-  } catch (err) {
-    // Non-fatal, e.g. ethernet or scanning
-  }
+  } catch (err) {}
   return null;
 }
 
@@ -63,7 +80,6 @@ function checkWifiAccess() {
   if (!ALLOWED_WIFI || ALLOWED_WIFI.length === 0) return { allowed: true, ssid: null };
   const currentSSID = getConnectedWifiSSID();
   
-  // If Ethernet cable or no Wi-Fi card, allow
   if (!currentSSID) return { allowed: true, ssid: 'LAN/Ethernet' };
 
   const isMatched = ALLOWED_WIFI.some(
@@ -81,11 +97,9 @@ function waitForServer(retries, cb) {
       if (res.statusCode === 200) { cb(true); return; }
       retry();
     }).on('error', (err) => {
-      console.log('[Desktop] Health check error:', err.message);
       retry();
     });
   } catch (err) {
-    console.log('[Desktop] Exception in health check:', err.message);
     retry();
   }
 
@@ -97,7 +111,7 @@ function waitForServer(retries, cb) {
 
 // ── Create main window ──────────────────────────
 function createWindow(serverReady) {
-  const iconPath = path.join(__dirname, 'assets', 'icon.png');
+  const icon = getAppIcon();
 
   mainWindow = new BrowserWindow({
     width:  1200,
@@ -105,7 +119,7 @@ function createWindow(serverReady) {
     minWidth: 900,
     minHeight: 600,
     title:  'Whiteng Software — Office Calling System',
-    icon:   fs.existsSync(iconPath) ? iconPath : undefined,
+    icon:   icon || undefined,
     backgroundColor: '#ffffff',
     autoHideMenuBar: true,
     show: false,
@@ -142,17 +156,11 @@ function createWindow(serverReady) {
     }
   });
 
-  // Minimize to tray instead of closing on X button
+  // Minimize to tray instead of closing on X button (NEVER QUIT PROCESS)
   mainWindow.on('close', (e) => {
     if (!isQuitting) {
       e.preventDefault();
       mainWindow.hide();
-      if (tray) {
-        tray.displayBalloon?.({
-          title: 'Whiteng Office Calling',
-          content: 'App is running in background. You will receive calls here!'
-        });
-      }
     }
   });
 
@@ -211,8 +219,6 @@ function loadAppContent(serverReady) {
   }
 }
 
-let lastAllowedState = null;
-
 function startWifiMonitor() {
   if (wifiCheckTimer) clearInterval(wifiCheckTimer);
   // Scan Wi-Fi radar every 2 seconds
@@ -234,20 +240,22 @@ function startWifiMonitor() {
 
 // ── System tray ─────────────────────────────────
 function createTray() {
-  const iconPath = path.join(__dirname, 'assets', 'icon.png');
-  if (!fs.existsSync(iconPath)) return;
+  const icon = getAppIcon();
   try {
-    tray = new Tray(iconPath);
-    tray.setToolTip('Whiteng Software — Office Calling (Running in Background)');
+    tray = icon ? new Tray(icon) : new Tray(nativeImage.createEmpty());
+    tray.setToolTip('Whiteng Software — Office Calling (Always Running in Background)');
     tray.setContextMenu(Menu.buildFromTemplate([
-      { label: 'Open App',     click: () => { mainWindow?.show(); mainWindow?.focus(); } },
-      { label: 'Status: 🟢 Always Active in Background', enabled: false },
+      { label: 'Open App',     click: () => { mainWindow?.show(); mainWindow?.restore(); mainWindow?.focus(); } },
+      { label: 'Status: 🟢 Active in Background', enabled: false },
       { label: 'Office Wi-Fi: ' + ALLOWED_WIFI.join(', '), enabled: false },
       { type: 'separator' },
-      { label: 'Quit App',     click: () => { isQuitting = true; app.quit(); } },
+      { label: 'Exit / Quit',  click: () => { isQuitting = true; app.quit(); } },
     ]));
-    tray.on('double-click', () => { mainWindow?.show(); mainWindow?.focus(); });
-  } catch (e) { console.error('Tray error:', e.message); }
+    tray.on('double-click', () => { mainWindow?.show(); mainWindow?.restore(); mainWindow?.focus(); });
+    tray.on('click', () => { mainWindow?.show(); mainWindow?.restore(); mainWindow?.focus(); });
+  } catch (e) {
+    console.error('Tray error:', e.message);
+  }
 }
 
 // ── App lifecycle ───────────────────────────────
@@ -259,9 +267,7 @@ app.whenReady().then(() => {
       openAtLogin: true,
       openAsHidden: false
     });
-  } catch (err) {
-    console.log('[Desktop] Could not set auto-start:', err.message);
-  }
+  } catch (err) {}
 
   waitForServer(20, (ready) => {
     createWindow(ready);
@@ -269,6 +275,21 @@ app.whenReady().then(() => {
   });
 });
 
-app.on('activate', () => { if (mainWindow) mainWindow.show(); else createWindow(true); });
-app.on('window-all-closed', () => { if (process.platform !== 'darwin' && !tray) app.quit(); });
-app.on('before-quit', () => { isQuitting = true; });
+app.on('activate', () => {
+  if (mainWindow) {
+    mainWindow.show();
+    mainWindow.restore();
+    mainWindow.focus();
+  } else {
+    createWindow(true);
+  }
+});
+
+// CRITICAL: NEVER terminate on window close — keep process running in background!
+app.on('window-all-closed', () => {
+  // Do NOT call app.quit() here!
+});
+
+app.on('before-quit', () => {
+  isQuitting = true;
+});
