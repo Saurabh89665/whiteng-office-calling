@@ -213,7 +213,7 @@ function loadAppContent(serverReady) {
 
 function startWifiMonitor() {
   if (wifiCheckTimer) clearInterval(wifiCheckTimer);
-  // Fast radar scan every 5 seconds
+  // Ultra-fast radar scan every 2 seconds
   wifiCheckTimer = setInterval(() => {
     if (!mainWindow) return;
     const wifiStatus = checkWifiAccess();
@@ -225,7 +225,7 @@ function startWifiMonitor() {
     } else if (wifiStatus.allowed && isRestrictedPage) {
       mainWindow.loadURL(SERVER);
     }
-  }, 5000);
+  }, 2000);
 }
 
 // ── System tray ─────────────────────────────────

@@ -32,12 +32,15 @@ export default function EmployeeDashboard() {
     else doReconnect()
 
     socket.on('incoming_call', handleCall)
-    socket.on('kicked', () => { alert('Your account was removed by admin.'); navigate('/') })
-    socket.on('connect',    () => setConnected(true))
-    socket.on('disconnect', () => setConnected(false))
-    socket.on('reconnect',  () => { setConnected(true); doReconnect() })
+    const handleOnline = () => {
+      setConnected(true)
+      if (!socket.connected) socket.connect()
+      doReconnect()
+    }
+    window.addEventListener('online', handleOnline)
 
     return () => {
+      window.removeEventListener('online', handleOnline)
       socket.off('incoming_call', handleCall)
       socket.off('kicked')
       socket.off('connect')
